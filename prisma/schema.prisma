@@ -1,0 +1,62 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Admin {
+  id       Int     @id @default(autoincrement())
+  email    String  @unique
+  password String
+  name     String?
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  category  Category @relation(fields: [categoryId], references: [id])
+  categoryId Int
+  image     String?  // Optional image path
+  thumbnail String?  // Optional thumbnail path
+}
+
+model Category {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  slug  String @unique
+  posts Post[]
+}
+
+model Page {
+  id      Int      @id @default(autoincrement())
+  title   String
+  slug    String   @unique
+  content String
+}
+
+model MenuItem {
+  id       Int        @id @default(autoincrement())
+  label    String
+  url      String
+  order    Int
+  parentId Int?
+  parent   MenuItem?  @relation("MenuItemToMenuItem", fields: [parentId], references: [id])
+  children MenuItem[] @relation("MenuItemToMenuItem")
+}
+
+model Media {
+  id        Int      @id @default(autoincrement())
+  filename  String
+  path      String
+  type      String
+  size      Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
