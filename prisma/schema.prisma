@@ -3,6 +3,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum PublishStatus {
+  DRAFT
+  PUBLISHED
+}
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -25,6 +30,7 @@ model Post {
   categoryId Int
   image     String?  // Optional image path
   thumbnail String?  // Optional thumbnail path
+  status    PublishStatus @default(DRAFT)
 }
 
 model Category {
@@ -39,6 +45,8 @@ model Page {
   title   String
   slug    String   @unique
   content String
+  status    PublishStatus @default(DRAFT)
+
 }
 
 model MenuItem {
