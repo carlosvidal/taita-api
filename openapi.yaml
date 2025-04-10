@@ -139,6 +139,8 @@ components:
           type: string
         content:
           type: string
+        excerpt:
+          type: string
         author:
           type: string
         createdAt:
