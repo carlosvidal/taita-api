@@ -14,6 +14,7 @@ generator client {
 
 model Admin {
   id       Int     @id @default(autoincrement())
+  uuid     String  @default(uuid()) @unique
   email    String  @unique
   password String
   name     String?
@@ -25,6 +26,7 @@ model Admin {
 
 model Post {
   id        Int      @id @default(autoincrement())
+  uuid      String   @default(uuid()) @unique
   title     String
   content   String
   slug      String   @unique
@@ -42,6 +44,7 @@ model Post {
 
 model Category {
   id    Int    @id @default(autoincrement())
+  uuid  String @default(uuid()) @unique
   name  String @unique
   slug  String @unique
   posts Post[]
@@ -49,6 +52,7 @@ model Category {
 
 model Page {
   id      Int      @id @default(autoincrement())
+  uuid    String   @default(uuid()) @unique
   title   String
   slug    String   @unique
   content String
@@ -62,6 +66,7 @@ model Page {
 
 model BlogSettings {
   id                Int      @id @default(autoincrement())
+  uuid              String   @default(uuid()) @unique
   language          String   @default("es")
   template          String   @default("default")
   domain            String?
@@ -73,6 +78,10 @@ model BlogSettings {
 
 model MenuItem {
   id        Int      @id @default(autoincrement())
+  uuid      String   @default(uuid()) @unique
+  label     String
+  url       String
+  order     Int
   parentId  Int?
   parent    MenuItem?  @relation("MenuItemToMenuItem", fields: [parentId], references: [id])
   children  MenuItem[] @relation("MenuItemToMenuItem")
@@ -80,6 +89,7 @@ model MenuItem {
 
 model Media {
   id        Int      @id @default(autoincrement())
+  uuid      String   @default(uuid()) @unique
   filename  String
   path      String
   type      String

@@ -1,5 +1,8 @@
 const express = require("express");
 const router = express.Router();
+const statsRouter = require("./stats");
+
+router.use("/api", statsRouter);
 
 router.use("/auth", require("./auth"));
 router.use("/categories", require("./categories"));

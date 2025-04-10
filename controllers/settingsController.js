@@ -20,7 +20,7 @@ const updateSettings = async (req, res) => {
 
   try {
     const settings = await prisma.blogSettings.upsert({
-      where: { id: 1 },
+      where: { uuid: req.params.uuid },
       update: { language, template, domain, googleAnalyticsId, socialNetworks },
       create: { language, template, domain, googleAnalyticsId, socialNetworks },
     });
