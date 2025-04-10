@@ -29,9 +29,15 @@ router.get("/:slug", async (req, res) => {
 // Create page
 router.post("/", async (req, res) => {
   try {
-    const { title, slug, content } = req.body;
+    const { title, slug, content, authorId, excerpt } = req.body;
     const page = await prisma.page.create({
-      data: { title, slug, content },
+      data: {
+        title,
+        slug,
+        content,
+        excerpt,
+        author: { connect: { id: authorId } },
+      },
     });
     res.json(page);
   } catch (error) {
@@ -42,10 +48,10 @@ router.post("/", async (req, res) => {
 // Update page
 router.put("/:id", async (req, res) => {
   try {
-    const { title, slug, content } = req.body;
+    const { title, slug, content, excerpt } = req.body;
     const page = await prisma.page.update({
       where: { id: parseInt(req.params.id) },
-      data: { title, slug, content },
+      data: { title, slug, content, excerpt },
     });
     res.json(page);
   } catch (error) {

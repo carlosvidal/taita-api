@@ -29,6 +29,7 @@ model Post {
   uuid      String   @default(uuid()) @unique
   title     String
   content   String
+  excerpt    String?
   slug      String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -56,6 +57,7 @@ model Page {
   title   String
   slug    String   @unique
   content String
+  excerpt String?
   status    PublishStatus @default(DRAFT)
   publishedAt DateTime?
   author    Admin    @relation(fields: [authorId], references: [id])
