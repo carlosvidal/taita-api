@@ -93,6 +93,43 @@ components:
           type: string
           format: date-time
 
+    BlogSettings:
+      type: object
+      properties:
+        id:
+          type: integer
+        language:
+          type: string
+          enum: [es, en]
+        template:
+          type: string
+          enum: [default, minimal, professional]
+        domain:
+          type: string
+        googleAnalyticsId:
+          type: string
+        socialNetworks:
+          type: object
+          properties:
+            facebook:
+              type: string
+            instagram:
+              type: string
+            x:
+              type: string
+            linkedin:
+              type: string
+            youtube:
+              type: string
+            github:
+              type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
   securitySchemes:
     bearerAuth:
       type: http

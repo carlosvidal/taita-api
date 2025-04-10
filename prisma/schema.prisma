@@ -58,14 +58,24 @@ model Page {
   authorId  Int
 }
 
+
+
+model BlogSettings {
+  id                Int      @id @default(autoincrement())
+  language          String   @default("es")
+  template          String   @default("default")
+  domain            String?
+  googleAnalyticsId String?
+  socialNetworks    Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
 model MenuItem {
-  id       Int        @id @default(autoincrement())
-  label    String
-  url      String
-  order    Int
-  parentId Int?
-  parent   MenuItem?  @relation("MenuItemToMenuItem", fields: [parentId], references: [id])
-  children MenuItem[] @relation("MenuItemToMenuItem")
+  id        Int      @id @default(autoincrement())
+  parentId  Int?
+  parent    MenuItem?  @relation("MenuItemToMenuItem", fields: [parentId], references: [id])
+  children  MenuItem[] @relation("MenuItemToMenuItem")
 }
 
 model Media {
