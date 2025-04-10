@@ -14,7 +14,7 @@ This is the backend API for the Astro Blog application.
 - npm 9+
 
 ## Instalación
-```bash
+```
 git clone https://github.com/tu-usuario/astro-blog-2.git
 cd astro-blog-2/api
 npm install
@@ -59,7 +59,7 @@ API backend para el sistema de blog astronómico.
 - npm 9+
 
 ## Instalación
-```bash
+```
 git clone https://github.com/tu-usuario/astro-blog-2.git
 cd astro-blog-2
 npm install
@@ -78,13 +78,13 @@ JWT_SECRET=tu_secreto_jwt
 ## Uso
 Iniciar servidor de desarrollo:
 
-```bash
+```
 npm run dev
  ```
 
 Iniciar servidor en producción:
 
-```bash
+```
 npm start
  ```
 
@@ -205,7 +205,7 @@ JWT_SECRET=tu_clave_secreta
  ```
 
 ## Uso
-```bash
+```
 # Desarrollo
 npm run dev
 

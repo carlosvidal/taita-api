@@ -34,6 +34,28 @@ paths:
         '201':
           description: Post created successfully
 
+  /media/upload:
+    post:
+      summary: Subir imágenes
+      tags: [Media]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Imágenes subidas y convertidas exitosamente
+        '400':
+          description: No se proporcionó ninguna imagen
+        '500':
+          description: Error al procesar la imagen
+
   /posts/{id}:
     get:
       summary: Get a specific blog post

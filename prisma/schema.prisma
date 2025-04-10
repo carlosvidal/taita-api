@@ -17,6 +17,10 @@ model Admin {
   email    String  @unique
   password String
   name     String?
+  bio      String?
+  picture  String?
+  posts    Post[]
+  pages    Page[]
 }
 
 model Post {
@@ -31,6 +35,9 @@ model Post {
   image     String?  // Optional image path
   thumbnail String?  // Optional thumbnail path
   status    PublishStatus @default(DRAFT)
+  publishedAt DateTime?
+  author    Admin    @relation(fields: [authorId], references: [id])
+  authorId  Int
 }
 
 model Category {
@@ -46,7 +53,9 @@ model Page {
   slug    String   @unique
   content String
   status    PublishStatus @default(DRAFT)
-
+  publishedAt DateTime?
+  author    Admin    @relation(fields: [authorId], references: [id])
+  authorId  Int
 }
 
 model MenuItem {
