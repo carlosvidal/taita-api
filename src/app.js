@@ -10,6 +10,8 @@ import menuRouter from "./routes/menu.js";
 import statsRouter from "./routes/stats.js";
 import authRouter from "./routes/auth.js";
 import mediaRouter from "./routes/media.js";
+import settingsRouter from "./routes/settings.js";
+import userProfileRouter from "./routes/userProfile.js";
 
 dotenv.config();
 
@@ -36,6 +38,8 @@ app.use("/api/menu", menuRouter);
 app.use("/api", statsRouter);
 app.use("/api", authRouter); // Añadir rutas de autenticación
 app.use("/api/media", mediaRouter); // Añadir rutas de medios
+app.use("/api/settings", settingsRouter); // Añadir rutas de configuraciones
+app.use("/api/users", userProfileRouter); // Añadir rutas de perfiles de usuario
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);

@@ -3,7 +3,7 @@ const router = express.Router();
 import {
   getPostsCount,
   getCategoriesCount,
-} from "../../controllers/statsController.js";
+} from "../controllers/statsController.js";
 
 // Endpoints de estadísticas
 router.get("/posts/count", getPostsCount);

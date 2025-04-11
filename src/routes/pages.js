@@ -13,6 +13,16 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Count pages
+router.get("/count", async (req, res) => {
+  try {
+    const count = await prisma.page.count();
+    res.json({ count });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get single page by UUID
 router.get("/uuid/:uuid", async (req, res) => {
   try {

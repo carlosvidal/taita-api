@@ -24,8 +24,11 @@ router.post('/login', async (req, res) => {
         success: true,
         token,
         user: {
+          id: user.id,
+          uuid: user.uuid,
           email: user.email,
-          name: user.name
+          name: user.name,
+          role: user.role
         }
       });
     }

@@ -15,6 +15,16 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Count categories
+router.get('/count', async (req, res) => {
+  try {
+    const count = await prisma.category.count();
+    res.json({ count });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get single category
 router.get('/:id', async (req, res) => {
   try {

@@ -12,6 +12,11 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum UserRole {
+  ADMIN
+  AUTHOR
+}
+
 model Admin {
   id       Int     @id @default(autoincrement())
   uuid     String  @default(uuid()) @unique
@@ -20,6 +25,7 @@ model Admin {
   name     String?
   bio      String?
   picture  String?
+  role     UserRole @default(AUTHOR)
   posts    Post[]
   pages    Page[]
 }

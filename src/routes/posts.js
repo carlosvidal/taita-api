@@ -16,6 +16,16 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Count posts
+router.get("/count", async (req, res) => {
+  try {
+    const count = await prisma.post.count();
+    res.json({ count });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get single post by UUID
 router.get("/uuid/:uuid", async (req, res) => {
   try {
@@ -48,16 +58,32 @@ router.get("/:id", async (req, res) => {
     }
     
     // Intentar buscar por ID numérico
-    try {
-      const postById = await prisma.post.findUnique({
-        where: { id: parseInt(req.params.id) },
-        include: { category: true, author: true },
-      });
-      if (postById) {
-        return res.json(postById);
+    // Primero intentamos buscar por UUID si el ID contiene guiones (característica de UUID)
+    if (req.params.id.includes('-')) {
+      try {
+        const postByUuid = await prisma.post.findUnique({
+          where: { uuid: req.params.id },
+          include: { category: true, author: true },
+        });
+        if (postByUuid) {
+          return res.json(postByUuid);
+        }
+      } catch (uuidError) {
+        console.log("Error al buscar por UUID:", uuidError);
       }
-    } catch (parseError) {
-      console.log("No se pudo parsear el ID como número");
+    } else {
+      // Si no es un UUID, intentamos buscar por ID numérico
+      try {
+        const postById = await prisma.post.findUnique({
+          where: { id: parseInt(req.params.id) },
+          include: { category: true, author: true },
+        });
+        if (postById) {
+          return res.json(postById);
+        }
+      } catch (parseError) {
+        console.log("No se pudo parsear el ID como número");
+      }
     }
     
     // Si llegamos aquí, no se encontró el post
