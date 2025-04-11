@@ -13,9 +13,37 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Get single page
+// Get single page by UUID
+router.get("/uuid/:uuid", async (req, res) => {
+  try {
+    console.log("Buscando página por UUID:", req.params.uuid);
+    const page = await prisma.page.findUnique({
+      where: { uuid: req.params.uuid },
+      include: { author: true }
+    });
+    if (!page) return res.status(404).json({ error: "Page not found" });
+    res.json(page);
+  } catch (error) {
+    console.error("Error al buscar página por UUID:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get single page by slug
 router.get("/:slug", async (req, res) => {
   try {
+    // Verificar si el slug podría ser un UUID
+    if (req.params.slug && req.params.slug.includes('-')) {
+      console.log("El slug parece ser un UUID, redirigiendo...");
+      const page = await prisma.page.findUnique({
+        where: { uuid: req.params.slug },
+        include: { author: true }
+      });
+      if (page) {
+        return res.json(page);
+      }
+    }
+    
     const page = await prisma.page.findUnique({
       where: { slug: req.params.slug },
     });

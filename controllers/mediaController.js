@@ -4,13 +4,14 @@ const fs = require("fs");
 
 const uploadImage = async (req, res) => {
   try {
-    if (!req.file) {
+    if (!req.files || !req.files.image) {
       return res
         .status(400)
         .json({ error: "No se proporcionó ninguna imagen" });
     }
 
-    const { buffer, originalname } = req.file;
+    const { userId, purpose } = req.body;
+    const { buffer, originalname } = req.files.image[0];
     const uploadPath = path.join(__dirname, "../uploads");
 
     // Crear directorio de uploads si no existe
@@ -19,8 +20,11 @@ const uploadImage = async (req, res) => {
     }
 
     // Guardar imagen original
-    const originalPath = path.join(uploadPath, originalname);
-    await sharp(buffer).toFile(originalPath);
+    const originalPath = path.join(
+      uploadPath,
+      `${path.parse(originalname).name}.webp`
+    );
+    await sharp(buffer).webp({ quality: 80 }).toFile(originalPath);
 
     // Crear versiones en diferentes tamaños
     const sizes = [

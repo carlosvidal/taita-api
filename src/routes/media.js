@@ -1,15 +1,33 @@
-import express from 'express';
-import multer from 'multer';
-import { PrismaClient } from '@prisma/client';
-import fs from 'fs';
-import path from 'path';
+import express from "express";
+import multer from "multer";
+import { PrismaClient } from "@prisma/client";
+import fs from "fs";
+import path from "path";
 
 const prisma = new PrismaClient();
 const router = express.Router();
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ dest: "uploads/" });
 
 // Create media
 router.post("/", upload.single("file"), async (req, res) => {
+  try {
+    const { filename, path: filePath, mimetype, size } = req.file;
+    const media = await prisma.media.create({
+      data: {
+        filename,
+        path: filePath,
+        type: mimetype,
+        size,
+      },
+    });
+    res.json(media);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Upload media
+router.post("/upload", upload.single("file"), async (req, res) => {
   try {
     const { filename, path: filePath, mimetype, size } = req.file;
     const media = await prisma.media.create({

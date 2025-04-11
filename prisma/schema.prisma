@@ -33,8 +33,8 @@ model Post {
   slug      String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  category  Category @relation(fields: [categoryId], references: [id])
-  categoryId Int
+  category  Category? @relation(fields: [categoryId], references: [id])
+  categoryId Int?
   image     String?  // Optional image path
   thumbnail String?  // Optional thumbnail path
   status    PublishStatus @default(DRAFT)
