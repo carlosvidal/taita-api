@@ -1,4 +1,4 @@
-openapi: 3.0.0
+openapi: 3.1.0
 info:
   title: Astro Blog API
   description: API for managing blog posts and user interactions
@@ -87,12 +87,6 @@ paths:
           description: Error al obtener configuraciones
     put:
       summary: Actualizar configuraciones del blog
-      parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
       requestBody:
         required: true
         content:
@@ -107,6 +101,133 @@ paths:
         '500':
           description: Error al actualizar configuraciones
 
+  /series:
+    get:
+      summary: Obtener todas las series
+      responses:
+        '200':
+          description: Lista de series
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Series'
+        '500':
+          description: Error al obtener series
+    post:
+      summary: Crear una nueva serie
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Series'
+      responses:
+        '200':
+          description: Serie creada exitosamente
+        '400':
+          description: Error en los datos proporcionados
+        '500':
+          description: Error al crear la serie
+          
+  /series/uuid/{uuid}:
+    get:
+      summary: Obtener una serie por UUID
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Detalles de la serie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Series'
+        '404':
+          description: Serie no encontrada
+        '500':
+          description: Error al obtener la serie
+    put:
+      summary: Actualizar una serie
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Series'
+      responses:
+        '200':
+          description: Serie actualizada exitosamente
+        '400':
+          description: Error en los datos proporcionados
+        '404':
+          description: Serie no encontrada
+        '500':
+          description: Error al actualizar la serie
+    delete:
+      summary: Eliminar una serie
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Serie eliminada exitosamente
+        '404':
+          description: Serie no encontrada
+        '500':
+          description: Error al eliminar la serie
+          
+  /series/uuid/{uuid}/posts:
+    post:
+      summary: Añadir un post a una serie
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                postId:
+                  type: integer
+                sequenceNumber:
+                  type: integer
+      responses:
+        '200':
+          description: Post añadido a la serie exitosamente
+        '400':
+          description: Error en los datos proporcionados
+        '404':
+          description: Serie o post no encontrado
+        '500':
+          description: Error al añadir el post a la serie
+          
   /profile:
     put:
       summary: Actualizar perfil de usuario
@@ -129,11 +250,19 @@ paths:
           description: Error al actualizar el perfil
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      
   schemas:
     Post:
       type: object
       properties:
         id:
+          type: string
+        uuid:
           type: string
         title:
           type: string
@@ -141,8 +270,21 @@ components:
           type: string
         excerpt:
           type: string
-        author:
+        slug:
           type: string
+        image:
+          type: string
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED]
+        author:
+          $ref: '#/components/schemas/Admin'
+        category:
+          $ref: '#/components/schemas/Category'
+        series:
+          $ref: '#/components/schemas/Series'
+        sequenceNumber:
+          type: integer
         createdAt:
           type: string
           format: date-time
@@ -155,6 +297,12 @@ components:
       properties:
         id:
           type: integer
+        title:
+          type: string
+          description: Título principal del blog
+        description:
+          type: string
+          description: Descripción breve del blog
         language:
           type: string
           enum: [es, en]
@@ -187,6 +335,76 @@ components:
           type: string
           format: date-time
 
+    Series:
+      type: object
+      properties:
+        id:
+          type: integer
+        uuid:
+          type: string
+        title:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        coverImage:
+          type: string
+        author:
+          $ref: '#/components/schemas/Admin'
+        posts:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              uuid:
+                type: string
+              title:
+                type: string
+              slug:
+                type: string
+              sequenceNumber:
+                type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          
+    Admin:
+      type: object
+      properties:
+        id:
+          type: integer
+        uuid:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        bio:
+          type: string
+        picture:
+          type: string
+        role:
+          type: string
+          enum: [ADMIN, AUTHOR]
+          
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        uuid:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+          
     Profile:
       type: object
       properties:
@@ -202,9 +420,3 @@ components:
         updatedAt:
           type: string
           format: date-time
-
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT

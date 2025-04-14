@@ -129,11 +129,31 @@ export const updateUserProfile = async (req, res) => {
  */
 export const updateProfilePicture = async (req, res) => {
   try {
-    const { uuid } = req.params;
+    console.log('===== INICIO PROCESO DE ACTUALIZACIÓN DE FOTO DE PERFIL =====');
+    console.log('Parámetros de la solicitud:', req.params);
+    console.log('Cabeceras de la solicitud:', req.headers);
+    console.log('Tipo de contenido:', req.headers['content-type']);
     
+    // Verificar si se recibió un archivo
     if (!req.file) {
-      return res.status(400).json({ error: "No se proporcionó ninguna imagen" });
+      console.error('Error: No se detectó ningún archivo en la solicitud');
+      console.log('Contenido de req.body:', req.body);
+      console.log('Contenido de req.files:', req.files);
+      return res.status(400).json({ 
+        error: "No se proporcionó ninguna imagen", 
+        detalle: "El servidor no pudo procesar el archivo enviado" 
+      });
     }
+    
+    // Usar req.file ya que estamos usando upload.single
+    const { buffer, originalname, mimetype } = req.file;
+    console.log('Archivo recibido correctamente:', { 
+      originalname, 
+      mimetype, 
+      size: buffer?.length || 0 
+    });
+    
+    const { uuid } = req.params;
     
     // Verificar si el usuario existe
     const user = await prisma.admin.findUnique({
@@ -141,21 +161,63 @@ export const updateProfilePicture = async (req, res) => {
     });
     
     if (!user) {
-      // Eliminar el archivo subido si el usuario no existe
-      fs.unlinkSync(req.file.path);
+      console.error(`Usuario con UUID ${uuid} no encontrado`);
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
     
+    console.log(`Usuario encontrado: ${user.name} (${user.email})`);
+    
     // Si el usuario ya tiene una imagen de perfil, eliminarla
     if (user.picture) {
-      const oldPicturePath = path.join(process.cwd(), user.picture);
-      if (fs.existsSync(oldPicturePath)) {
-        fs.unlinkSync(oldPicturePath);
+      console.log(`El usuario tiene una imagen de perfil existente: ${user.picture}`);
+      
+      // Comprobar si la ruta es absoluta o relativa
+      let oldPicturePath = user.picture;
+      if (!path.isAbsolute(oldPicturePath)) {
+        // Si es una ruta relativa, convertirla a absoluta
+        if (oldPicturePath.startsWith('/')) {
+          // Si comienza con /, es relativa a la raíz del proyecto
+          oldPicturePath = path.join(process.cwd(), '..', oldPicturePath.substring(1));
+        } else {
+          // De lo contrario, es relativa al directorio actual
+          oldPicturePath = path.join(process.cwd(), oldPicturePath);
+        }
+      }
+      
+      console.log('Ruta absoluta de la imagen anterior:', oldPicturePath);
+      
+      try {
+        if (fs.existsSync(oldPicturePath)) {
+          fs.unlinkSync(oldPicturePath);
+          console.log('Imagen anterior eliminada con éxito');
+        } else {
+          console.log('No se encontró la imagen anterior para eliminar');
+        }
+      } catch (err) {
+        console.error('Error al intentar eliminar la imagen anterior:', err);
+        // Continuamos con el proceso a pesar del error
       }
     }
     
-    // Guardar la ruta de la nueva imagen
-    const picturePath = req.file.path.replace(process.cwd(), '');
+    // Crear directorio de uploads si no existe
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    
+    // Generar nombre de archivo único
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const filename = 'profile-' + uniqueSuffix + path.extname(originalname);
+    const filePath = path.join(uploadDir, filename);
+    
+    // Guardar el archivo en disco
+    fs.writeFileSync(filePath, buffer);
+    console.log('Archivo guardado en:', filePath);
+    
+    // Convertir la ruta absoluta a una ruta relativa desde la raíz del proyecto
+    const projectRoot = path.join(process.cwd(), '..');
+    const picturePath = '/' + path.relative(projectRoot, filePath).replace(/\\/g, '/');
+    
+    console.log('Ruta relativa de la nueva imagen:', picturePath);
     
     // Actualizar el perfil con la nueva imagen
     const updatedUser = await prisma.admin.update({
@@ -163,13 +225,23 @@ export const updateProfilePicture = async (req, res) => {
       data: { picture: picturePath }
     });
     
+    console.log('Perfil actualizado correctamente con la nueva imagen');
+    
     // No enviar la contraseña en la respuesta
     const { password, ...userWithoutPassword } = updatedUser;
     
-    res.json(userWithoutPassword);
+    console.log('===== FIN PROCESO DE ACTUALIZACIÓN DE FOTO DE PERFIL =====');
+    
+    return res.status(200).json({
+      mensaje: "Imagen de perfil actualizada con éxito",
+      usuario: userWithoutPassword
+    });
   } catch (error) {
     console.error("Error al actualizar foto de perfil:", error);
-    res.status(500).json({ error: "Error al actualizar foto de perfil" });
+    return res.status(500).json({ 
+      error: "Error al actualizar foto de perfil",
+      mensaje: error.message
+    });
   }
 };
 

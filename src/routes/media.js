@@ -1,111 +1,84 @@
 import express from "express";
 import multer from "multer";
 import { PrismaClient } from "@prisma/client";
-import fs from "fs";
-import path from "path";
+import { uploadImage, getAllMedia, deleteMedia } from "../controllers/mediaController.js";
 
 const prisma = new PrismaClient();
+
 const router = express.Router();
-const upload = multer({ dest: "uploads/" });
 
-// Create media
-router.post("/", upload.single("file"), async (req, res) => {
-  try {
-    const { filename, path: filePath, mimetype, size } = req.file;
-    const media = await prisma.media.create({
-      data: {
-        filename,
-        path: filePath,
-        type: mimetype,
-        size,
-      },
-    });
-    res.json(media);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+// Configuración de multer para manejar la carga de archivos
+const storage = multer.memoryStorage(); // Almacenar en memoria para procesar con sharp
+
+// Middleware para manejar errores de multer
+const handleMulterError = (err, req, res, next) => {
+  console.error('Error de Multer:', err);
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'El archivo es demasiado grande. Máximo 5MB.' });
+    }
+    return res.status(400).json({ error: `Error de carga: ${err.message}` });
+  } else if (err) {
+    return res.status(500).json({ error: `Error del servidor: ${err.message}` });
   }
+  next();
+};
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // Limitar a 5MB
+  },
+  fileFilter: (req, file, cb) => {
+    console.log('Multer recibió archivo:', file.originalname, file.mimetype);
+    // Aceptar solo imágenes
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Solo se permiten archivos de imagen'), false);
+    }
+  },
 });
 
-// Upload media
-router.post("/upload", upload.single("file"), async (req, res) => {
-  try {
-    const { filename, path: filePath, mimetype, size } = req.file;
-    const media = await prisma.media.create({
-      data: {
-        filename,
-        path: filePath,
-        type: mimetype,
-        size,
-      },
-    });
-    res.json(media);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// Ruta para subir imágenes
+router.post("/upload", upload.single('image'), handleMulterError, uploadImage);
 
-// Get all media
-router.get("/", async (req, res) => {
-  try {
-    const media = await prisma.media.findMany({
-      orderBy: { createdAt: "desc" },
-    });
-    res.json(media);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// Ruta para obtener todas las imágenes
+router.get("/", getAllMedia);
 
-// Get single media
-router.get("/:id", async (req, res) => {
+// Ruta para eliminar una imagen
+router.delete("/:id", deleteMedia);
+
+// Ruta para obtener una imagen por UUID
+router.get("/uuid/:uuid", async (req, res) => {
   try {
+    const { uuid } = req.params;
     const media = await prisma.media.findUnique({
-      where: { id: parseInt(req.params.id) },
+      where: { uuid }
     });
+    
     if (!media) {
       return res.status(404).json({ error: "Media not found" });
     }
-    res.json(media);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Update media metadata
-router.put("/:id", async (req, res) => {
-  try {
-    const { filename } = req.body;
-    const media = await prisma.media.update({
-      where: { id: parseInt(req.params.id) },
-      data: { filename },
+    
+    // Transformar los resultados para incluir URLs completas
+    const variants = JSON.parse(media.variants || '[]');
+    const urls = {};
+    
+    variants.forEach(variant => {
+      const baseUrl = media.path.substring(0, media.path.lastIndexOf('/'));
+      urls[variant.size] = `${baseUrl}/${variant.filename}`;
     });
-    res.json(media);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Delete media
-router.delete("/:id", async (req, res) => {
-  try {
-    const media = await prisma.media.findUnique({
-      where: { id: parseInt(req.params.id) },
+    
+    res.json({
+      id: media.id,
+      uuid: media.uuid,
+      originalName: media.originalName,
+      entityType: media.entityType,
+      entityId: media.entityId,
+      createdAt: media.createdAt,
+      urls
     });
-
-    if (!media) {
-      return res.status(404).json({ error: "Media not found" });
-    }
-
-    // Delete file from filesystem
-    const filePath = path.join(__dirname, "../../", media.path);
-    fs.unlinkSync(filePath);
-
-    // Delete from database
-    await prisma.media.delete({
-      where: { id: parseInt(req.params.id) },
-    });
-
-    res.json({ message: "Media deleted successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

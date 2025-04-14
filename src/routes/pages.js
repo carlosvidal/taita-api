@@ -6,9 +6,45 @@ const router = express.Router();
 // Get all pages
 router.get("/", async (req, res) => {
   try {
-    const pages = await prisma.page.findMany();
+    const pages = await prisma.page.findMany({
+      include: {
+        author: {
+          select: {
+            id: true,
+            uuid: true,
+            name: true,
+            email: true
+          }
+        }
+      },
+      // Ahora que hemos añadido el campo updatedAt, podemos ordenar por él
+      orderBy: { updatedAt: "desc" },
+    });
     res.json(pages);
   } catch (error) {
+    console.error('Error al obtener páginas:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Check if a slug is already in use
+router.get("/check-slug", async (req, res) => {
+  try {
+    const { slug } = req.query;
+    
+    if (!slug) {
+      return res.status(400).json({ error: "Slug parameter is required" });
+    }
+    
+    // Verificar si el slug ya existe en la base de datos
+    const existingPage = await prisma.page.findUnique({
+      where: { slug },
+      select: { id: true, uuid: true }
+    });
+    
+    res.json({ exists: !!existingPage, page: existingPage });
+  } catch (error) {
+    console.error("Error al verificar slug:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -31,7 +67,17 @@ router.get("/uuid/:uuid", async (req, res) => {
       where: { uuid: req.params.uuid },
       include: { author: true }
     });
+    
     if (!page) return res.status(404).json({ error: "Page not found" });
+    
+    // Registrar la información de la imagen para depuración
+    console.log("Información de imagen de la página:", {
+      id: page.id,
+      uuid: page.uuid,
+      image: page.image,
+      imageId: page.imageId
+    });
+    
     res.json(page);
   } catch (error) {
     console.error("Error al buscar página por UUID:", error);
@@ -67,44 +113,175 @@ router.get("/:slug", async (req, res) => {
 // Create page
 router.post("/", async (req, res) => {
   try {
-    const { title, slug, content, authorId, excerpt } = req.body;
+    const { title, slug, content, authorId, excerpt, status, image, imageId } = req.body;
+    console.log("Creando nueva página:", req.body);
+    
+    // Convertir el status a mayúsculas para que coincida con el enum PublishStatus
+    const statusValue = status ? status.toUpperCase() : 'DRAFT';
+    
+    // Preparar los datos para la creación
+    const pageData = {
+      title,
+      slug,
+      content,
+      excerpt,
+      status: statusValue,
+      author: { connect: { id: authorId } }
+    };
+    
+    // Manejar la imagen si se proporciona
+    if (image) {
+      console.log("Incluyendo imagen en la nueva página:", image);
+      pageData.image = image;
+      
+      if (imageId) {
+        pageData.imageId = parseInt(imageId);
+        console.log("ID de imagen convertido a entero:", pageData.imageId);
+      }
+    }
+    
+    console.log("Datos finales para crear página:", pageData);
+    
     const page = await prisma.page.create({
-      data: {
-        title,
-        slug,
-        content,
-        excerpt,
-        author: { connect: { id: authorId } },
-      },
+      data: pageData
     });
+    
+    console.log("Página creada exitosamente:", {
+      id: page.id,
+      uuid: page.uuid,
+      title: page.title,
+      image: page.image,
+      imageId: page.imageId
+    });
+    
     res.json(page);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
-// Update page
+// Update page by UUID
+router.put("/uuid/:uuid", async (req, res) => {
+  try {
+    const { title, slug, content, excerpt, status, authorId, image, imageId, removeImage } = req.body;
+    console.log("Actualizando página por UUID:", req.params.uuid, req.body);
+    
+    // Convertir el status a mayúsculas para que coincida con el enum PublishStatus
+    const statusValue = status ? status.toUpperCase() : 'DRAFT';
+    
+    // Preparar los datos para la actualización
+    const updateData = { 
+      title, 
+      slug, 
+      content, 
+      excerpt,
+      status: statusValue,
+      ...(authorId && { author: { connect: { id: authorId } } })
+    };
+    
+    // Manejar la imagen
+    if (image !== undefined) {
+      console.log("Actualizando imagen de la página:", image);
+      updateData.image = image;
+      
+      if (imageId) {
+        updateData.imageId = parseInt(imageId);
+        console.log("ID de imagen convertido a entero:", updateData.imageId);
+      }
+    } else if (removeImage) {
+      console.log("Eliminando imagen de la página");
+      updateData.image = null;
+      updateData.imageId = null;
+    }
+    
+    console.log("Datos finales para actualizar:", updateData);
+    
+    const page = await prisma.page.update({
+      where: { uuid: req.params.uuid },
+      data: updateData,
+    });
+    
+    // Verificar que la actualización se haya realizado correctamente
+    console.log("Página actualizada exitosamente:", {
+      id: page.id,
+      uuid: page.uuid,
+      title: page.title,
+      image: page.image,
+      imageId: page.imageId
+    });
+    
+    res.json(page);
+  } catch (error) {
+    console.error("Error al actualizar página por UUID:", error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Update page by ID (para compatibilidad)
 router.put("/:id", async (req, res) => {
   try {
-    const { title, slug, content, excerpt } = req.body;
+    const { title, slug, content, excerpt, status } = req.body;
+    
+    // Convertir el status a mayúsculas para que coincida con el enum PublishStatus
+    const statusValue = status ? status.toUpperCase() : 'DRAFT';
+    
+    // Verificar si el ID parece ser un UUID (contiene guiones)
+    if (req.params.id.includes('-')) {
+      // Si es un UUID, redirigir a la ruta de UUID
+      console.log("El ID parece ser un UUID, redirigiendo...");
+      const page = await prisma.page.update({
+        where: { uuid: req.params.id },
+        data: { title, slug, content, excerpt, status: statusValue },
+      });
+      return res.json(page);
+    }
+    
+    // Si no es un UUID, procesar como ID numérico
     const page = await prisma.page.update({
       where: { id: parseInt(req.params.id) },
-      data: { title, slug, content, excerpt },
+      data: { title, slug, content, excerpt, status: statusValue },
     });
     res.json(page);
   } catch (error) {
+    console.error("Error al actualizar página:", error);
     res.status(400).json({ error: error.message });
   }
 });
 
-// Delete page
+// Delete page by UUID
+router.delete("/uuid/:uuid", async (req, res) => {
+  try {
+    console.log("Eliminando página por UUID:", req.params.uuid);
+    await prisma.page.delete({
+      where: { uuid: req.params.uuid },
+    });
+    res.json({ message: "Page deleted successfully" });
+  } catch (error) {
+    console.error("Error al eliminar página por UUID:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete page by ID (para compatibilidad)
 router.delete("/:id", async (req, res) => {
   try {
+    // Verificar si el ID parece ser un UUID (contiene guiones)
+    if (req.params.id.includes('-')) {
+      // Si es un UUID, redirigir a la ruta de UUID
+      console.log("El ID parece ser un UUID, redirigiendo...");
+      await prisma.page.delete({
+        where: { uuid: req.params.id },
+      });
+      return res.json({ message: "Page deleted successfully" });
+    }
+    
+    // Si no es un UUID, procesar como ID numérico
     await prisma.page.delete({
       where: { id: parseInt(req.params.id) },
     });
     res.json({ message: "Page deleted successfully" });
   } catch (error) {
+    console.error("Error al eliminar página:", error);
     res.status(500).json({ error: error.message });
   }
 });

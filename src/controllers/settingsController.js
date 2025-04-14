@@ -11,7 +11,7 @@ const getSettings = async (req, res) => {
 };
 
 const updateSettings = async (req, res) => {
-  const { language, template, domain, googleAnalyticsId, socialNetworks } =
+  const { title, description, language, template, domain, googleAnalyticsId, socialNetworks } =
     req.body;
 
   if (template && !["default", "minimal", "professional"].includes(template)) {
@@ -28,12 +28,12 @@ const updateSettings = async (req, res) => {
       // Actualizar configuraciones existentes
       settings = await prisma.blogSettings.update({
         where: { id: existingSettings.id },
-        data: { language, template, domain, googleAnalyticsId, socialNetworks },
+        data: { title, description, language, template, domain, googleAnalyticsId, socialNetworks },
       });
     } else {
       // Crear nuevas configuraciones si no existen
       settings = await prisma.blogSettings.create({
-        data: { language, template, domain, googleAnalyticsId, socialNetworks },
+        data: { title, description, language, template, domain, googleAnalyticsId, socialNetworks },
       });
     }
     

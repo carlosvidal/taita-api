@@ -28,25 +28,30 @@ model Admin {
   role     UserRole @default(AUTHOR)
   posts    Post[]
   pages    Page[]
+  series   Series[]
 }
 
 model Post {
-  id        Int      @id @default(autoincrement())
-  uuid      String   @default(uuid()) @unique
-  title     String
-  content   String
-  excerpt    String?
-  slug      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  category  Category? @relation(fields: [categoryId], references: [id])
-  categoryId Int?
-  image     String?  // Optional image path
-  thumbnail String?  // Optional thumbnail path
-  status    PublishStatus @default(DRAFT)
-  publishedAt DateTime?
-  author    Admin    @relation(fields: [authorId], references: [id])
-  authorId  Int
+  id             Int      @id @default(autoincrement())
+  uuid           String   @default(uuid()) @unique
+  title          String
+  content        String
+  excerpt        String?
+  slug           String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  category       Category? @relation(fields: [categoryId], references: [id])
+  categoryId     Int?
+  image          String?  // Path to featured image
+  imageId        Int?     // Reference to Media model
+  thumbnail      String?  // Optional thumbnail path
+  status         PublishStatus @default(DRAFT)
+  publishedAt    DateTime?
+  author         Admin    @relation(fields: [authorId], references: [id])
+  authorId       Int
+  series         Series?  @relation(fields: [seriesId], references: [id])
+  seriesId       Int?
+  sequenceNumber Int?     // Orden dentro de la serie
 }
 
 model Category {
@@ -58,23 +63,43 @@ model Category {
 }
 
 model Page {
-  id      Int      @id @default(autoincrement())
-  uuid    String   @default(uuid()) @unique
-  title   String
-  slug    String   @unique
-  content String
-  excerpt String?
+  id        Int      @id @default(autoincrement())
+  uuid      String   @default(uuid()) @unique
+  title     String
+  slug      String   @unique
+  content   String
+  excerpt   String?
+  image     String?  // Path to featured image
+  imageId   Int?     // Reference to Media model
   status    PublishStatus @default(DRAFT)
   publishedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   author    Admin    @relation(fields: [authorId], references: [id])
   authorId  Int
 }
 
 
 
+model Series {
+  id          Int      @id @default(autoincrement())
+  uuid        String   @default(uuid()) @unique
+  title       String
+  slug        String   @unique
+  description String?
+  coverImage  String?  // Path to cover image
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  author      Admin    @relation(fields: [authorId], references: [id])
+  authorId    Int
+  posts       Post[]
+}
+
 model BlogSettings {
   id                Int      @id @default(autoincrement())
   uuid              String   @default(uuid()) @unique
+  title             String   @default("Mi Blog")
+  description       String   @default("Un blog personal")
   language          String   @default("es")
   template          String   @default("default")
   domain            String?
@@ -96,12 +121,16 @@ model MenuItem {
 }
 
 model Media {
-  id        Int      @id @default(autoincrement())
-  uuid      String   @default(uuid()) @unique
-  filename  String
-  path      String
-  type      String
-  size      Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  uuid        String   @default(uuid()) @unique
+  filename    String
+  originalName String
+  mimeType    String
+  path        String
+  size        Int
+  entityType  String?
+  entityId    String?
+  variants    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
