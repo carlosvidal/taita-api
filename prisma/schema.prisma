@@ -17,6 +17,13 @@ enum UserRole {
   AUTHOR
 }
 
+enum CommentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SPAM
+}
+
 model Admin {
   id       Int     @id @default(autoincrement())
   uuid     String  @default(uuid()) @unique
@@ -52,6 +59,7 @@ model Post {
   series         Series?  @relation(fields: [seriesId], references: [id])
   seriesId       Int?
   sequenceNumber Int?     // Orden dentro de la serie
+  comments       Comment[]
 }
 
 model Category {
@@ -133,4 +141,19 @@ model Media {
   variants    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Comment {
+  id           Int           @id @default(autoincrement())
+  uuid         String        @unique @default(uuid())
+  postId       Int?
+  post         Post?         @relation(fields: [postId], references: [id])
+  authorName   String
+  authorEmail  String
+  content      String
+  createdAt    DateTime      @default(now())
+  status       CommentStatus @default(PENDING)
+  ip           String
+  isSuspect    Boolean       @default(false)
+  honeypot     String?
 }

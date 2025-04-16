@@ -16,6 +16,8 @@ import settingsRouter from "./routes/settings.js";
 import userProfileRouter from "./routes/userProfile.js";
 import seriesRouter from "./routes/series.js";
 import profilePictureTestRouter from "./routes/profilePictureTest.js";
+import commentsRouter from "./routes/comments.js";
+import { addDebugRoutes } from "./controllers/commentsController.js";
 
 dotenv.config();
 
@@ -25,6 +27,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 3000;
+addDebugRoutes(app);
 
 // Configuración CORS actualizada para permitir peticiones desde ambos puertos
 const corsOptions = {
@@ -32,6 +35,9 @@ const corsOptions = {
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:5175",
+    "http://localhost:4321",
+    "http://localhost:4322",
+    "http://localhost:4323",
   ], // Permitir ambos puertos
   credentials: true,
   optionsSuccessStatus: 200,
@@ -58,6 +64,7 @@ app.use("/api/menu", menuRouter);
 app.use("/api/series", seriesRouter); // Nueva ruta para series
 app.use("/api/users", userProfileRouter);
 app.use("/api/profile-picture-test", profilePictureTestRouter); // Nueva ruta para imágenes de perfil
+app.use("/api/comments", commentsRouter);
 app.use("/api", statsRouter);
 app.use("/api", authRouter); // Añadir rutas de autenticación
 app.use("/api/media", mediaRouter); // Añadir rutas de medios
