@@ -96,7 +96,18 @@ export const listComments = async (req, res) => {
   if (pageId) where.pageId = Number(pageId);
   if (status) where.status = status;
   try {
-    const comments = await prisma.comment.findMany({ where, orderBy: { createdAt: 'desc' } });
+    const comments = await prisma.comment.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        post: {
+          select: {
+            title: true,
+            uuid: true
+          }
+        }
+      }
+    });
     return res.json(comments);
   } catch (err) {
     return res.status(500).json({ error: 'Error al obtener comentarios' });
