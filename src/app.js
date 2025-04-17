@@ -13,6 +13,7 @@ import statsRouter from "./routes/stats.js";
 import authRouter from "./routes/auth.js";
 import mediaRouter from "./routes/media.js";
 import settingsRouter from "./routes/settings.js";
+import blogsRouter from "./routes/blogs.js";
 import userProfileRouter from "./routes/userProfile.js";
 import seriesRouter from "./routes/series.js";
 import profilePictureTestRouter from "./routes/profilePictureTest.js";
@@ -59,6 +60,7 @@ app.use("/api/posts", postsRouter);
 app.use("/api/cms-posts", cmsPostsRouter); // Nueva ruta para posts del CMS
 app.use("/api/cms-pages", cmsPagesRouter); // Nueva ruta para pages del CMS
 app.use("/api/categories", categoriesRouter);
+app.use("/api/blogs", blogsRouter);
 app.use("/api/pages", pagesRouter);
 app.use("/api/menu", menuRouter);
 app.use("/api/series", seriesRouter); // Nueva ruta para series

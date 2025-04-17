@@ -2,86 +2,129 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  const admin = await prisma.admin.upsert({
-    where: { email: "admin@example.com" },
-    update: {},
-    create: {
-      email: "admin@example.com",
-      password: "securepassword",
-      name: "Admin User",
-    },
-  });
+  // 1. Busca o crea un blog principal
+  let blog = await prisma.blog.findFirst({ where: { subdomain: "demo" } });
+  if (!blog) {
+    blog = await prisma.blog.create({
+      data: {
+        name: "Blog Principal",
+        subdomain: "demo",
+        plan: "FREE"
+      }
+    });
+  }
+  console.log({ blog });
+
+  // 2. Busca o crea el admin
+  let admin = await prisma.admin.findUnique({ where: { email: "admin@example.com" } });
+  if (!admin) {
+    admin = await prisma.admin.create({
+      data: {
+        email: "admin@example.com",
+        password: "securepassword",
+        name: "Admin User",
+        role: "AUTHOR"
+      }
+    });
+  }
   console.log({ admin });
 
-  // Crear categorías
+  // 2b. Asegura la relación BlogUser OWNER
+  const existingMembership = await prisma.blogUser.findFirst({ where: { userId: admin.id, blogId: blog.id } });
+  if (!existingMembership) {
+    await prisma.blogUser.create({
+      data: {
+        userId: admin.id,
+        blogId: blog.id,
+        role: "OWNER"
+      }
+    });
+  }
+
+  // 3. Crea o reutiliza categorías asociadas al blog
   const categories = await Promise.all([
     prisma.category.upsert({
       where: { slug: "tecnologia" },
       update: {},
-      create: { name: "Tecnología", slug: "tecnologia" }
+      create: { name: "Tecnología", slug: "tecnologia", blogId: blog.id }
     }),
     prisma.category.upsert({
       where: { slug: "vida" },
       update: {},
-      create: { name: "Vida", slug: "vida" }
+      create: { name: "Vida", slug: "vida", blogId: blog.id }
     }),
     prisma.category.upsert({
       where: { slug: "noticias" },
       update: {},
-      create: { name: "Noticias", slug: "noticias" }
+      create: { name: "Noticias", slug: "noticias", blogId: blog.id }
     })
   ]);
   console.log({ categories });
 
-  // Crear posts
+  // 4. Crea posts asociados al blog y categorías
   const posts = await Promise.all([
-    prisma.post.create({
-      data: {
+    prisma.post.upsert({
+      where: { slug: "primer-post" },
+      update: {},
+      create: {
         title: "Primer post de ejemplo",
         slug: "primer-post",
         content: "Este es el contenido del primer post de ejemplo.",
-        author: { connect: { id: admin.id } },
-        category: { connect: { id: categories[0].id } },
+        authorId: admin.id,
+        categoryId: categories[0].id,
+        blogId: blog.id,
         publishedAt: new Date()
       }
     }),
-    prisma.post.create({
-      data: {
+    prisma.post.upsert({
+      where: { slug: "segundo-post" },
+      update: {},
+      create: {
         title: "Segundo post",
         slug: "segundo-post",
         content: "Contenido del segundo post.",
-        author: { connect: { id: admin.id } },
-        category: { connect: { id: categories[1].id } },
+        authorId: admin.id,
+        categoryId: categories[1].id,
+        blogId: blog.id,
         publishedAt: new Date()
       }
     }),
-    prisma.post.create({
-      data: {
+    prisma.post.upsert({
+      where: { slug: "tercer-post" },
+      update: {},
+      create: {
         title: "Tercer post",
         slug: "tercer-post",
         content: "Contenido del tercer post.",
-        author: { connect: { id: admin.id } },
-        category: { connect: { id: categories[2].id } },
+        authorId: admin.id,
+        categoryId: categories[2].id,
+        blogId: blog.id,
         publishedAt: new Date()
       }
     }),
-    prisma.post.create({
-      data: {
+    prisma.post.upsert({
+      where: { slug: "cuarto-post" },
+      update: {},
+      create: {
         title: "Cuarto post",
         slug: "cuarto-post",
         content: "Contenido del cuarto post.",
-        author: { connect: { id: admin.id } },
-        category: { connect: { id: categories[0].id } },
+        authorId: admin.id,
+        categoryId: categories[0].id,
+        blogId: blog.id,
         publishedAt: new Date()
       }
     }),
-    prisma.post.create({
-      data: {
+    prisma.post.upsert({
+      where: { slug: "quinto-post" },
+      update: {},
+      create: {
         title: "Quinto post",
         slug: "quinto-post",
         content: "Contenido del quinto post.",
-        author: { connect: { id: admin.id } },
-        category: { connect: { id: categories[1].id } },
+        authorId: admin.id,
+        categoryId: categories[1].id,
+        blogId: blog.id,
         publishedAt: new Date()
       }
     })
@@ -90,39 +133,51 @@ async function main() {
 
   // Crear páginas
   const pages = await Promise.all([
-    prisma.page.create({
-      data: {
+    prisma.page.upsert({
+      where: { slug: "sobre-nosotros" },
+      update: {},
+      create: {
         title: "Sobre Nosotros",
         slug: "sobre-nosotros",
         content: "Esta es la página sobre nosotros.",
-        author: { connect: { id: admin.id } },
+        authorId: admin.id,
+        blogId: blog.id,
         publishedAt: new Date()
       }
     }),
-    prisma.page.create({
-      data: {
+    prisma.page.upsert({
+      where: { slug: "contacto" },
+      update: {},
+      create: {
         title: "Contacto",
         slug: "contacto",
         content: "Página de contacto.",
-        author: { connect: { id: admin.id } },
+        authorId: admin.id,
+        blogId: blog.id,
         publishedAt: new Date()
       }
     }),
-    prisma.page.create({
-      data: {
+    prisma.page.upsert({
+      where: { slug: "privacidad" },
+      update: {},
+      create: {
         title: "Política de Privacidad",
         slug: "privacidad",
         content: "Política de privacidad del sitio.",
-        author: { connect: { id: admin.id } },
+        authorId: admin.id,
+        blogId: blog.id,
         publishedAt: new Date()
       }
     }),
-    prisma.page.create({
-      data: {
+    prisma.page.upsert({
+      where: { slug: "terminos" },
+      update: {},
+      create: {
         title: "Términos y Condiciones",
         slug: "terminos",
         content: "Términos y condiciones de uso.",
-        author: { connect: { id: admin.id } },
+        authorId: admin.id,
+        blogId: blog.id,
         publishedAt: new Date()
       }
     })

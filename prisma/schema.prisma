@@ -17,6 +17,18 @@ enum UserRole {
   AUTHOR
 }
 
+enum Plan {
+  FREE
+  PRO
+}
+
+enum BlogUserRole {
+  OWNER
+  EDITOR
+  CONTRIBUTOR
+}
+
+
 enum CommentStatus {
   PENDING
   APPROVED
@@ -32,13 +44,45 @@ model Admin {
   name     String?
   bio      String?
   picture  String?
-  role     UserRole @default(AUTHOR)
-  posts    Post[]
-  pages    Page[]
-  series   Series[]
+  role     UserRole @default(AUTHOR) // Global role (SuperAdmin)
+  blogMemberships BlogUser[]
+
+  posts    Post[]    @relation("PostAuthor")
+  pages    Page[]    @relation("PageAuthor")
+  series   Series[]  @relation("SeriesAuthor")
+}
+
+model Blog {
+  id        Int      @id @default(autoincrement())
+  uuid      String   @default(uuid()) @unique
+  name      String
+  subdomain String?  // Ej: "miblog" para miblog.tu-dominio.com
+  domain    String?  // Ej: "midominio.com" para dominios propios
+  plan      Plan     @default(FREE)
+  users     BlogUser[]
+  posts     Post[]
+  pages     Page[]
+  categories Category[]
+  comments  Comment[]
+  series    Series[]
+  media     Media[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BlogUser {
+  id      Int           @id @default(autoincrement())
+  user    Admin         @relation(fields: [userId], references: [id])
+  userId  Int
+  blog    Blog          @relation(fields: [blogId], references: [id])
+  blogId  Int
+  role    BlogUserRole
+  @@unique([userId, blogId])
 }
 
 model Post {
+  blog      Blog     @relation(fields: [blogId], references: [id])
+  blogId    Int
   id             Int      @id @default(autoincrement())
   uuid           String   @default(uuid()) @unique
   title          String
@@ -54,7 +98,7 @@ model Post {
   thumbnail      String?  // Optional thumbnail path
   status         PublishStatus @default(DRAFT)
   publishedAt    DateTime?
-  author         Admin    @relation(fields: [authorId], references: [id])
+  author         Admin    @relation("PostAuthor", fields: [authorId], references: [id])
   authorId       Int
   series         Series?  @relation(fields: [seriesId], references: [id])
   seriesId       Int?
@@ -63,6 +107,8 @@ model Post {
 }
 
 model Category {
+  blog      Blog     @relation(fields: [blogId], references: [id])
+  blogId    Int
   id    Int    @id @default(autoincrement())
   uuid  String @default(uuid()) @unique
   name  String @unique
@@ -71,6 +117,8 @@ model Category {
 }
 
 model Page {
+  blog      Blog     @relation(fields: [blogId], references: [id])
+  blogId    Int
   id        Int      @id @default(autoincrement())
   uuid      String   @default(uuid()) @unique
   title     String
@@ -83,13 +131,14 @@ model Page {
   publishedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  author    Admin    @relation(fields: [authorId], references: [id])
+  author    Admin    @relation("PageAuthor", fields: [authorId], references: [id])
   authorId  Int
 }
 
 
-
 model Series {
+  blog      Blog     @relation(fields: [blogId], references: [id])
+  blogId    Int
   id          Int      @id @default(autoincrement())
   uuid        String   @default(uuid()) @unique
   title       String
@@ -98,24 +147,12 @@ model Series {
   coverImage  String?  // Path to cover image
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  author      Admin    @relation(fields: [authorId], references: [id])
+  author      Admin    @relation("SeriesAuthor", fields: [authorId], references: [id])
   authorId    Int
   posts       Post[]
 }
 
-model BlogSettings {
-  id                Int      @id @default(autoincrement())
-  uuid              String   @default(uuid()) @unique
-  title             String   @default("Mi Blog")
-  description       String   @default("Un blog personal")
-  language          String   @default("es")
-  template          String   @default("default")
-  domain            String?
-  googleAnalyticsId String?
-  socialNetworks    Json?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-}
+
 
 model MenuItem {
   id        Int      @id @default(autoincrement())
@@ -129,6 +166,8 @@ model MenuItem {
 }
 
 model Media {
+  blog      Blog     @relation(fields: [blogId], references: [id])
+  blogId    Int
   id          Int      @id @default(autoincrement())
   uuid        String   @default(uuid()) @unique
   filename    String
@@ -144,6 +183,8 @@ model Media {
 }
 
 model Comment {
+  blog      Blog     @relation(fields: [blogId], references: [id])
+  blogId    Int
   id           Int           @id @default(autoincrement())
   uuid         String        @unique @default(uuid())
   postId       Int?
