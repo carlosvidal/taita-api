@@ -4,33 +4,67 @@ const prisma = new PrismaClient();
 const router = express.Router();
 
 // Get all series
-router.get("/", async (req, res) => {
+import { authenticateUser } from '../middleware/authMiddleware.js';
+
+router.get("/", authenticateUser, async (req, res) => {
   try {
-    const series = await prisma.series.findMany({
-      include: { 
-        author: {
-          select: {
-            id: true,
-            uuid: true,
-            name: true,
-            email: true
+    let series;
+    if (req.user.role === 'SUPER_ADMIN') {
+      series = await prisma.series.findMany({
+        include: { 
+          author: {
+            select: {
+              id: true,
+              uuid: true,
+              name: true,
+              email: true
+            }
+          },
+          posts: {
+            select: {
+              id: true,
+              uuid: true,
+              title: true,
+              slug: true,
+              sequenceNumber: true
+            },
+            orderBy: {
+              sequenceNumber: "asc"
+            }
           }
         },
-        posts: {
-          select: {
-            id: true,
-            uuid: true,
-            title: true,
-            slug: true,
-            sequenceNumber: true
+        orderBy: { updatedAt: "desc" },
+      });
+    } else {
+      const blog = await prisma.blog.findUnique({ where: { adminId: req.user.id }, select: { id: true } });
+      if (!blog) return res.json([]);
+      series = await prisma.series.findMany({
+        where: { blogId: blog.id },
+        include: { 
+          author: {
+            select: {
+              id: true,
+              uuid: true,
+              name: true,
+              email: true
+            }
           },
-          orderBy: {
-            sequenceNumber: "asc"
+          posts: {
+            select: {
+              id: true,
+              uuid: true,
+              title: true,
+              slug: true,
+              sequenceNumber: true
+            },
+            orderBy: {
+              sequenceNumber: "asc"
+            }
           }
-        }
-      },
-      orderBy: { updatedAt: "desc" },
-    });
+        },
+        orderBy: { updatedAt: "desc" },
+      });
+    }
     res.json(series);
   } catch (error) {
     console.error('Error al obtener series:', error);

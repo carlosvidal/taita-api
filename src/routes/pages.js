@@ -4,22 +4,43 @@ const prisma = new PrismaClient();
 const router = express.Router();
 
 // Get all pages
-router.get("/", async (req, res) => {
+import { authenticateUser } from '../middleware/authMiddleware.js';
+
+router.get("/", authenticateUser, async (req, res) => {
   try {
-    const pages = await prisma.page.findMany({
-      include: {
-        author: {
-          select: {
-            id: true,
-            uuid: true,
-            name: true,
-            email: true
+    let pages;
+    if (req.user.role === 'SUPER_ADMIN') {
+      pages = await prisma.page.findMany({
+        include: {
+          author: {
+            select: {
+              id: true,
+              uuid: true,
+              name: true,
+              email: true
+            }
           }
-        }
-      },
-      // Ahora que hemos añadido el campo updatedAt, podemos ordenar por él
-      orderBy: { updatedAt: "desc" },
-    });
+        },
+        orderBy: { updatedAt: "desc" },
+      });
+    } else {
+      const blog = await prisma.blog.findUnique({ where: { adminId: req.user.id }, select: { id: true } });
+      if (!blog) return res.json([]);
+      pages = await prisma.page.findMany({
+        where: { blogId: blog.id },
+        include: {
+          author: {
+            select: {
+              id: true,
+              uuid: true,
+              name: true,
+              email: true
+            }
+          }
+        },
+        orderBy: { updatedAt: "desc" },
+      });
+    }
     res.json(pages);
   } catch (error) {
     console.error('Error al obtener páginas:', error);

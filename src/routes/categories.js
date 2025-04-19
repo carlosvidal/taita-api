@@ -4,11 +4,24 @@ const prisma = new PrismaClient()
 const router = express.Router()
 
 // Get all categories
-router.get('/', async (req, res) => {
+import { authenticateUser } from '../middleware/authMiddleware.js';
+
+router.get('/', authenticateUser, async (req, res) => {
   try {
-    const categories = await prisma.category.findMany({
-      include: { posts: true }
-    });
+    let categories;
+    if (req.user.role === 'SUPER_ADMIN') {
+      categories = await prisma.category.findMany({
+        include: { posts: true }
+      });
+    } else {
+      // Buscar blog del usuario
+      const blog = await prisma.blog.findUnique({ where: { adminId: req.user.id }, select: { id: true } });
+      if (!blog) return res.json([]);
+      categories = await prisma.category.findMany({
+        where: { blogId: blog.id },
+        include: { posts: true }
+      });
+    }
     res.json(categories);
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -4,22 +4,53 @@ const prisma = new PrismaClient();
 const router = express.Router();
 
 // Get all posts
-router.get("/", async (req, res) => {
+import { authenticateUser } from '../middleware/authMiddleware.js';
+
+router.get("/", authenticateUser, async (req, res) => {
   try {
-    const posts = await prisma.post.findMany({
-      include: { 
-        category: true,
-        author: {
-          select: {
-            id: true,
-            uuid: true,
-            name: true,
-            email: true
+    let posts;
+    if (req.user.role === 'SUPER_ADMIN') {
+      // SUPER_ADMIN puede ver todos los posts
+      posts = await prisma.post.findMany({
+        include: {
+          category: true,
+          author: {
+            select: {
+              id: true,
+              uuid: true,
+              name: true,
+              email: true
+            }
           }
-        }
-      },
-      orderBy: { updatedAt: "desc" },
-    });
+        },
+        orderBy: { updatedAt: "desc" },
+      });
+    } else {
+      // Otros usuarios solo ven los posts de su blog
+      // Buscar el blog asociado al usuario
+      const blog = await prisma.blog.findUnique({
+        where: { adminId: req.user.id },
+        select: { id: true }
+      });
+      if (!blog) {
+        return res.json([]); // Usuario sin blog propio
+      }
+      posts = await prisma.post.findMany({
+        where: { blogId: blog.id },
+        include: {
+          category: true,
+          author: {
+            select: {
+              id: true,
+              uuid: true,
+              name: true,
+              email: true
+            }
+          }
+        },
+        orderBy: { updatedAt: "desc" },
+      });
+    }
     res.json(posts);
   } catch (error) {
     console.error('Error al obtener posts:', error);
