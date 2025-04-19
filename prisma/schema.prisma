@@ -15,6 +15,7 @@ generator client {
 enum UserRole {
   ADMIN
   AUTHOR
+  SUPER_ADMIN
 }
 
 enum Plan {
@@ -45,7 +46,8 @@ model Admin {
   bio      String?
   picture  String?
   role     UserRole @default(AUTHOR) // Global role (SuperAdmin)
-  blogMemberships BlogUser[]
+
+  blog     Blog?
 
   posts    Post[]    @relation("PostAuthor")
   pages    Page[]    @relation("PageAuthor")
@@ -58,8 +60,16 @@ model Blog {
   name      String
   subdomain String?  // Ej: "miblog" para miblog.tu-dominio.com
   domain    String?  // Ej: "midominio.com" para dominios propios
+  title     String?  // Título del blog
+  description String? // Descripción
+  language  String?  // Idioma (ej: 'es')
+  template  String?  // Plantilla visual
+  googleAnalyticsId String? // ID de Google Analytics
+  socialNetworks Json? // Redes sociales (JSON)
+
   plan      Plan     @default(FREE)
-  users     BlogUser[]
+adminId   Int?   @unique
+admin     Admin? @relation(fields: [adminId], references: [id])
   posts     Post[]
   pages     Page[]
   categories Category[]
@@ -70,15 +80,7 @@ model Blog {
   updatedAt DateTime @updatedAt
 }
 
-model BlogUser {
-  id      Int           @id @default(autoincrement())
-  user    Admin         @relation(fields: [userId], references: [id])
-  userId  Int
-  blog    Blog          @relation(fields: [blogId], references: [id])
-  blogId  Int
-  role    BlogUserRole
-  @@unique([userId, blogId])
-}
+
 
 model Post {
   blog      Blog     @relation(fields: [blogId], references: [id])

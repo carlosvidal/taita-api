@@ -1,9 +1,16 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 
+import { requestOtp, verifyOtp, signup } from '../controllers/authController.js';
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// Registro con OTP
+router.post('/request-otp', requestOtp);
+router.post('/verify-otp', verifyOtp);
+router.post('/signup', signup);
+
+import bcrypt from "bcryptjs";
 // Ruta de login
 router.post('/login', async (req, res) => {
   try {
@@ -14,9 +21,8 @@ router.post('/login', async (req, res) => {
       where: { email }
     });
     
-    // Verificar si el usuario existe y la contraseña es correcta
-    // En un sistema real, deberías usar bcrypt para comparar contraseñas hasheadas
-    if (user && user.password === password) {
+    // Verificar si el usuario existe y la contraseña es correcta (bcrypt)
+    if (user && await bcrypt.compare(password, user.password)) {
       // Generar un token simple (en producción usarías JWT)
       const token = Buffer.from(`${email}-${Date.now()}`).toString('base64');
       

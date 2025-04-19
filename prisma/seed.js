@@ -2,20 +2,7 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  // 1. Busca o crea un blog principal
-  let blog = await prisma.blog.findFirst({ where: { subdomain: "demo" } });
-  if (!blog) {
-    blog = await prisma.blog.create({
-      data: {
-        name: "Blog Principal",
-        subdomain: "demo",
-        plan: "FREE"
-      }
-    });
-  }
-  console.log({ blog });
-
-  // 2. Busca o crea el admin
+  // 1. Busca o crea el admin
   let admin = await prisma.admin.findUnique({ where: { email: "admin@example.com" } });
   if (!admin) {
     admin = await prisma.admin.create({
@@ -23,23 +10,30 @@ async function main() {
         email: "admin@example.com",
         password: "securepassword",
         name: "Admin User",
-        role: "AUTHOR"
+        role: "ADMIN"
       }
     });
   }
   console.log({ admin });
 
-  // 2b. Asegura la relación BlogUser OWNER
-  const existingMembership = await prisma.blogUser.findFirst({ where: { userId: admin.id, blogId: blog.id } });
-  if (!existingMembership) {
-    await prisma.blogUser.create({
-      data: {
-        userId: admin.id,
-        blogId: blog.id,
-        role: "OWNER"
-      }
-    });
-  }
+  // 2. Busca o crea un blog principal asociado al admin
+  let blog = await prisma.blog.upsert({
+    where: { adminId: admin.id },
+    update: {},
+    create: {
+      name: "Blog Principal",
+      subdomain: "demo",
+      plan: "FREE",
+      adminId: admin.id,
+      title: "Blog Principal",
+      description: "Un blog de ejemplo para pruebas.",
+      language: "es",
+      template: "default",
+      googleAnalyticsId: "",
+      socialNetworks: { twitter: "", facebook: "", instagram: "" }
+    }
+  });
+  console.log({ blog });
 
   // 3. Crea o reutiliza categorías asociadas al blog
   const categories = await Promise.all([

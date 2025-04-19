@@ -68,7 +68,7 @@ app.use("/api/users", userProfileRouter);
 app.use("/api/profile-picture-test", profilePictureTestRouter); // Nueva ruta para imágenes de perfil
 app.use("/api/comments", commentsRouter);
 app.use("/api", statsRouter);
-app.use("/api", authRouter); // Añadir rutas de autenticación
+app.use("/api/auth", authRouter); // Añadir rutas de autenticación
 app.use("/api/media", mediaRouter); // Añadir rutas de medios
 app.use("/api/settings", settingsRouter); // Añadir rutas de configuraciones
 
