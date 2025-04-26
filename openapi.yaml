@@ -198,6 +198,24 @@ paths:
           
   /series/uuid/{uuid}/posts:
     post:
+
+  /payments/notifications:
+    post:
+      summary: Handle payment notifications
+      tags: [Payments]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentNotification'
+      responses:
+        '200':
+          description: Notification received successfully
+        '400':
+          description: Invalid notification format
+        '500':
+          description: Error processing notification
       summary: Añadir un post a una serie
       security:
         - bearerAuth: []
@@ -250,6 +268,21 @@ paths:
           description: Error al actualizar el perfil
 
 components:
+  schemas:
+    PaymentNotification:
+      type: object
+      properties:
+        id:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
   securitySchemes:
     bearerAuth:
       type: http
