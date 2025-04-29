@@ -9,11 +9,29 @@ const OTP_CODE = '123456';
 const OTP_EXPIRATION = 10 * 60 * 1000; // 10 minutos
 const otpStore = new Map(); // email -> { code, expiresAt, verified }
 
+import { sendMail } from "../utils/mailer.js";
+
 export const requestOtp = async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: "Email requerido" });
-  otpStore.set(email, { code: OTP_CODE, expiresAt: Date.now() + OTP_EXPIRATION, verified: false });
-  return res.json({ success: true, message: 'OTP enviado (simulado)', code: OTP_CODE });
+
+  // Genera un OTP aleatorio de 6 dígitos
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  otpStore.set(email, { code, expiresAt: Date.now() + OTP_EXPIRATION, verified: false });
+
+  // Envía el OTP por email
+  try {
+    await sendMail({
+      to: email,
+      subject: "Tu código de verificación (OTP) para Taita Blog",
+      html: `<p>Tu código de verificación es: <b>${code}</b>. Es válido por 10 minutos.</p>`,
+      text: `Tu código de verificación es: ${code}. Es válido por 10 minutos.`,
+    });
+    return res.json({ success: true, message: 'OTP enviado a tu correo electrónico' });
+  } catch (error) {
+    console.error("Error enviando OTP:", error);
+    return res.status(500).json({ error: "No se pudo enviar el OTP. Intenta nuevamente." });
+  }
 };
 
 export const verifyOtp = async (req, res) => {

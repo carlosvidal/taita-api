@@ -72,6 +72,16 @@ app.use("/api/auth", authRouter); // Añadir rutas de autenticación
 app.use("/api/media", mediaRouter); // Añadir rutas de medios
 app.use("/api/settings", settingsRouter); // Añadir rutas de configuraciones
 
+// Importar y usar las nuevas rutas de suscripciones y pagos
+import subscriptionsRouter from "./routes/subscriptions.js";
+import paymentRouter from "./routes/paymentRoutes.js";
+app.use("/api/subscriptions", subscriptionsRouter); // Añadir rutas de suscripciones
+app.use("/api/payments", paymentRouter); // Añadir rutas de pagos
+
+// Importar y usar las nuevas rutas de recuperación de contraseña
+import passwordRouter from "./routes/password.js";
+app.use("/api/password", passwordRouter); // Añadir rutas de recuperación de contraseña
+
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });

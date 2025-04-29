@@ -52,6 +52,16 @@ model Admin {
   posts    Post[]    @relation("PostAuthor")
   pages    Page[]    @relation("PageAuthor")
   series   Series[]  @relation("SeriesAuthor")
+
+  passwordResetToken PasswordResetToken?
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  token     String   @unique
+  expiresAt DateTime
+  user      Admin    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Blog {
@@ -68,8 +78,11 @@ model Blog {
   socialNetworks Json? // Redes sociales (JSON)
 
   plan      Plan     @default(FREE)
-adminId   Int?   @unique
-admin     Admin? @relation(fields: [adminId], references: [id])
+  subscriptionId String? // ID de la suscripción en el sistema de pagos
+  subscriptionStatus String? // Estado de la suscripción: ACTIVE, CANCELED, PENDING, NONE
+  nextPaymentDate DateTime? // Fecha del próximo pago
+  adminId   Int?   @unique
+  admin     Admin? @relation(fields: [adminId], references: [id])
   posts     Post[]
   pages     Page[]
   categories Category[]

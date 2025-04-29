@@ -1,9 +1,12 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
+import jwt from 'jsonwebtoken';
 
 import { requestOtp, verifyOtp, signup } from '../controllers/authController.js';
 const router = express.Router();
 const prisma = new PrismaClient();
+
+const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 
 // Registro con OTP
 router.post('/request-otp', requestOtp);
@@ -15,17 +18,25 @@ import bcrypt from "bcryptjs";
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    
+    console.log('Intentando login para:', email);
     // Buscar el usuario en la base de datos
     const user = await prisma.admin.findUnique({
       where: { email }
     });
-    
+    console.log('Usuario encontrado:', user ? { id: user.id, email: user.email, password: user.password } : null);
+    let passwordMatch = false;
+    if (user) {
+      passwordMatch = await bcrypt.compare(password, user.password);
+      console.log('Resultado bcrypt.compare:', passwordMatch);
+    }
     // Verificar si el usuario existe y la contraseña es correcta (bcrypt)
-    if (user && await bcrypt.compare(password, user.password)) {
-      // Generar un token simple (en producción usarías JWT)
-      const token = Buffer.from(`${email}-${Date.now()}`).toString('base64');
-      
+    if (user && passwordMatch) {
+      // Generar un JWT
+      const token = jwt.sign(
+        { id: user.id, uuid: user.uuid, email: user.email, role: user.role },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
       return res.status(200).json({
         success: true,
         token,
