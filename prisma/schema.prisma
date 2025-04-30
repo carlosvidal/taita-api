@@ -29,6 +29,12 @@ enum BlogUserRole {
   CONTRIBUTOR
 }
 
+enum EmailType {
+  REGULAR
+  BURNER
+  DISPOSABLE
+}
+
 
 enum CommentStatus {
   PENDING
@@ -41,6 +47,10 @@ model Admin {
   id       Int     @id @default(autoincrement())
   uuid     String  @default(uuid()) @unique
   email    String  @unique
+  isBurnerEmail Boolean @default(false)
+  emailType EmailType @default(REGULAR)
+  emailVerified Boolean @default(false)
+  emailDomain String?
   password String
   name     String?
   bio      String?

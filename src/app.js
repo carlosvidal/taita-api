@@ -18,6 +18,7 @@ import userProfileRouter from "./routes/userProfile.js";
 import seriesRouter from "./routes/series.js";
 import profilePictureTestRouter from "./routes/profilePictureTest.js";
 import commentsRouter from "./routes/comments.js";
+import emailsRouter from "./routes/emails.js";
 import { addDebugRoutes } from "./controllers/commentsController.js";
 
 dotenv.config();
@@ -48,6 +49,9 @@ import cors from "cors";
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// Endpoint interno de verificación de emails
+app.use("/api/emails", emailsRouter);
 
 // --- Cap endpoints ---
 const cap = new Cap({

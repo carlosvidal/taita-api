@@ -1,8 +1,16 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { isBurnerEmail, getEmailType, extractDomain } from "../utils/burnerEmailChecker.js";
 
 const prisma = new PrismaClient();
+
+// Estadísticas básicas en memoria
+const burnerEmailStats = {
+  totalChecked: 0,
+  burnerDetected: 0,
+  lastChecked: null,
+};
 
 // OTP Simulado
 const OTP_CODE = '123456';
@@ -60,11 +68,24 @@ export const signup = async (req, res) => {
     const existingBlog = await prisma.blog.findFirst({ where: { subdomain } });
     if (existingUser) return res.status(409).json({ error: "Email ya registrado" });
     if (existingBlog) return res.status(409).json({ error: "Subdominio no disponible" });
+    // Validación y marcado de email temporal
+    const emailDomain = extractDomain(email);
+    const isBurner = isBurnerEmail(email);
+    const emailType = getEmailType(email);
+    // Estadísticas
+    burnerEmailStats.totalChecked++;
+    if (isBurner) burnerEmailStats.burnerDetected++;
+    burnerEmailStats.lastChecked = new Date().toISOString();
+
     // Crea el usuario
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.admin.create({
       data: {
         email,
+        isBurnerEmail: isBurner,
+        emailType: emailType,
+        emailVerified: false,
+        emailDomain: emailDomain,
         password: hashedPassword,
         name,
         role: "ADMIN"
