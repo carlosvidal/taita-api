@@ -15,6 +15,7 @@
     "seed": "node prisma/seed.js"
   },
   "dependencies": {
+    "@cap.js/server": "^1.0.11",
     "@prisma/client": "^6.6.0",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",

@@ -1,6 +1,6 @@
 import express from "express";
-import cors from "cors";
 import dotenv from "dotenv";
+import Cap from "@cap.js/server";
 import path from "path";
 import { fileURLToPath } from "url";
 import categoriesRouter from "./routes/categories.js";
@@ -44,8 +44,28 @@ const corsOptions = {
   optionsSuccessStatus: 200,
 };
 
+import cors from "cors";
+
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// --- Cap endpoints ---
+const cap = new Cap({
+  tokens_store_path: ".data/tokensList.json",
+});
+
+app.post("/api/challenge", (req, res) => {
+  res.json(cap.createChallenge());
+});
+
+app.post("/api/redeem", async (req, res) => {
+  const { token, solutions } = req.body;
+  if (!token || !solutions) {
+    return res.status(400).json({ success: false });
+  }
+  res.json(await cap.redeemChallenge({ token, solutions }));
+});
+// --- Fin Cap endpoints ---
 
 // Servir archivos estáticos desde la carpeta uploads
 const uploadsPath = path.join(__dirname, "../../uploads");
