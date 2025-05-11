@@ -31,16 +31,35 @@ const app = express();
 const port = process.env.PORT || 3000;
 addDebugRoutes(app);
 
-// Configuración CORS actualizada para permitir peticiones desde ambos puertos
+// Configuración CORS actualizada para permitir peticiones desde desarrollo y producción
 const corsOptions = {
   origin: [
+    // Entornos de desarrollo
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:5175",
     "http://localhost:4321",
     "http://localhost:4322",
     "http://localhost:4323",
-  ], // Permitir ambos puertos
+    // Dominios de producción
+    "https://taita.blog",
+    "https://cms.taita.blog",
+    "https://*.taita.blog",
+    // Permitir subdominios wildcard en producción
+    (origin, callback) => {
+      const allowedDomain = 'taita.blog';
+      // Si el origen es null o undefined (ej. solicitudes desde Postman o curl)
+      if (!origin) return callback(null, true);
+      
+      // Verificar si es un subdominio de taita.blog
+      if (origin.endsWith(`.${allowedDomain}`) || origin === `https://${allowedDomain}`) {
+        return callback(null, true);
+      }
+      
+      // No es un dominio permitido
+      callback(new Error('No permitido por CORS'));
+    }
+  ],
   credentials: true,
   optionsSuccessStatus: 200,
 };
