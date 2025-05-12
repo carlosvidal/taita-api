@@ -43,6 +43,7 @@ const corsOptions = {
     "http://localhost:4323",
     // Dominios de producción
     "https://taita.blog",
+    "https://www.taita.blog",
     "https://cms.taita.blog",
     "https://*.taita.blog",
     // Permitir subdominios wildcard en producción
