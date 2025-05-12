@@ -1,14 +1,17 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
   // 1. Busca o crea el admin
   let admin = await prisma.admin.findUnique({ where: { email: "admin@example.com" } });
   if (!admin) {
+    // Hashear la contraseña antes de guardarla
+    const hashedPassword = await bcrypt.hash("securepassword", 10);
     admin = await prisma.admin.create({
       data: {
         email: "admin@example.com",
-        password: "securepassword",
+        password: hashedPassword,
         name: "Admin User",
         role: "ADMIN"
       }
