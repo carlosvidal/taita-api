@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import Cap from "@cap.js/server";
 import path from "path";
 import { fileURLToPath } from "url";
+import { PrismaClient } from "@prisma/client";
 import categoriesRouter from "./routes/categories.js";
 import postsRouter from "./routes/posts.js";
 import cmsPostsRouter from "./routes/cmsPosts.js";
@@ -27,47 +28,99 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Inicializar Prisma
+const prisma = new PrismaClient();
+
 const app = express();
 const port = process.env.PORT || 3000;
 addDebugRoutes(app);
 
-// Configuración CORS actualizada para permitir peticiones desde desarrollo y producción
-const corsOptions = {
-  origin: [
-    // Entornos de desarrollo
+// Configuración CORS dinámica que consulta la base de datos
+const dynamicCorsMiddleware = async (req, res, next) => {
+  const origin = req.headers.origin;
+  
+  // Permitir siempre en desarrollo
+  const devOrigins = [
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:5175",
     "http://localhost:4321",
     "http://localhost:4322",
-    "http://localhost:4323",
-    // Dominios de producción
+    "http://localhost:4323"
+  ];
+  
+  // Dominios principales siempre permitidos
+  const mainDomains = [
     "https://taita.blog",
     "https://www.taita.blog",
-    "https://cms.taita.blog",
-    "https://*.taita.blog",
-    // Permitir subdominios wildcard en producción
-    (origin, callback) => {
-      const allowedDomain = 'taita.blog';
-      // Si el origen es null o undefined (ej. solicitudes desde Postman o curl)
-      if (!origin) return callback(null, true);
-      
-      // Verificar si es un subdominio de taita.blog
-      if (origin.endsWith(`.${allowedDomain}`) || origin === `https://${allowedDomain}`) {
-        return callback(null, true);
-      }
-      
-      // No es un dominio permitido
-      callback(new Error('No permitido por CORS'));
+    "https://cms.taita.blog"
+  ];
+  
+  // Si no hay origen o es un entorno de desarrollo, permitir
+  if (!origin || devOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
     }
-  ],
-  credentials: true,
-  optionsSuccessStatus: 200,
+    
+    return next();
+  }
+  
+  // Si es uno de los dominios principales, permitir
+  if (mainDomains.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+    
+    return next();
+  }
+  
+  try {
+    // Extraer el subdominio del origen
+    let hostname = new URL(origin).hostname;
+    let subdomain = hostname.split('.')[0];
+    
+    // Buscar en la base de datos si existe un blog con este subdominio
+    const blog = await prisma.blog.findFirst({
+      where: { subdomain: subdomain }
+    });
+    
+    if (blog) {
+      // Si existe el blog, permitir el acceso
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.header('Access-Control-Allow-Credentials', 'true');
+      
+      console.log(`CORS: Permitiendo acceso desde ${origin} (subdominio: ${subdomain})`);
+    } else {
+      // Si no existe, registrar el intento
+      console.log(`CORS: Bloqueando acceso desde ${origin} (subdominio: ${subdomain} no encontrado)`);
+    }
+  } catch (error) {
+    console.error('Error verificando CORS:', error);
+  }
+  
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  next();
 };
 
 import cors from "cors";
 
-app.use(cors(corsOptions));
+// Aplicar el middleware CORS dinámico
+app.use(dynamicCorsMiddleware);
 app.use(express.json());
 
 // Endpoint interno de verificación de emails
