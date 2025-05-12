@@ -1,9 +1,16 @@
 services:
   - type: web
     name: taita-api
-    env: node
+    runtime: node
     plan: starter
-    buildCommand: npm install && npx prisma generate && npm run build
+    buildCommand: |
+      npm install && \
+      echo "Generating Prisma client..." && \
+      npx prisma generate && \
+      echo "Running database migrations..." && \
+      npx prisma migrate deploy && \
+      echo "Seeding database..." && \
+      npx prisma db seed
     startCommand: npm start
     envVars:
       - key: NODE_ENV
