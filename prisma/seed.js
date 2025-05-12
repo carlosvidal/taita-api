@@ -20,22 +20,42 @@ async function main() {
   console.log({ admin });
 
   // 2. Busca o crea un blog principal asociado al admin
-  let blog = await prisma.blog.upsert({
-    where: { adminId: admin.id },
-    update: {},
-    create: {
-      name: "Blog Principal",
-      subdomain: "demo",
-      plan: "FREE",
-      adminId: admin.id,
-      title: "Blog Principal",
-      description: "Un blog de ejemplo para pruebas.",
-      language: "es",
-      template: "default",
-      googleAnalyticsId: "",
-      socialNetworks: { twitter: "", facebook: "", instagram: "" }
-    }
+  // Primero verificamos si ya existe un blog para este admin
+  let existingBlog = await prisma.blog.findFirst({
+    where: { adminId: admin.id }
   });
+
+  let blog;
+  if (existingBlog) {
+    // Si ya existe, solo lo actualizamos
+    blog = await prisma.blog.update({
+      where: { id: existingBlog.id },
+      data: {
+        // Solo actualizamos campos que queremos mantener sincronizados
+        name: "Blog Principal",
+        title: "Blog Principal",
+        description: "Un blog de ejemplo para pruebas.",
+      }
+    });
+    console.log("Blog existente actualizado");
+  } else {
+    // Si no existe, lo creamos
+    blog = await prisma.blog.create({
+      data: {
+        name: "Blog Principal",
+        subdomain: "demo",
+        plan: "FREE",
+        adminId: admin.id,
+        title: "Blog Principal",
+        description: "Un blog de ejemplo para pruebas.",
+        language: "es",
+        template: "default",
+        googleAnalyticsId: "",
+        socialNetworks: { twitter: "", facebook: "", instagram: "" }
+      }
+    });
+    console.log("Nuevo blog creado");
+  }
   console.log({ blog });
 
   // 3. Crea o reutiliza categorías asociadas al blog
