@@ -5,7 +5,14 @@ const prisma = new PrismaClient();
 async function main() {
   // 1. Busca o crea el admin
   let admin = await prisma.admin.findUnique({ where: { email: "admin@example.com" } });
-  if (!admin) {
+  if (admin) {
+    // Si el usuario ya existe, actualizar su rol a SUPER_ADMIN
+    admin = await prisma.admin.update({
+      where: { id: admin.id },
+      data: { role: "SUPER_ADMIN" }
+    });
+    console.log("Admin existente actualizado a SUPER_ADMIN");
+  } else {
     // Hashear la contraseña antes de guardarla
     const hashedPassword = await bcrypt.hash("securepassword", 10);
     admin = await prisma.admin.create({
@@ -13,7 +20,7 @@ async function main() {
         email: "admin@example.com",
         password: hashedPassword,
         name: "Admin User",
-        role: "ADMIN"
+        role: "SUPER_ADMIN"
       }
     });
   }
