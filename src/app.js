@@ -38,7 +38,7 @@ addDebugRoutes(app);
 // Configuración CORS dinámica que consulta la base de datos
 const dynamicCorsMiddleware = async (req, res, next) => {
   const origin = req.headers.origin;
-  
+
   // Permitir siempre en desarrollo
   const devOrigins = [
     "http://localhost:5173",
@@ -46,74 +46,91 @@ const dynamicCorsMiddleware = async (req, res, next) => {
     "http://localhost:5175",
     "http://localhost:4321",
     "http://localhost:4322",
-    "http://localhost:4323"
+    "http://localhost:4323",
   ];
-  
+
   // Dominios principales siempre permitidos
   const mainDomains = [
     "https://taita.blog",
     "https://www.taita.blog",
-    "https://cms.taita.blog"
+    "https://cms.taita.blog",
+    // Dominios de Render.com
+    "https://taita-frontend.onrender.com",
+    "https://taita-api.onrender.com",
+    "https://taita-cms.onrender.com",
   ];
-  
+
   // Si no hay origen o es un entorno de desarrollo, permitir
   if (!origin || devOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-    res.header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    
-    if (req.method === 'OPTIONS') {
+    res.header("Access-Control-Allow-Origin", origin || "*");
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET, PUT, POST, DELETE, OPTIONS"
+    );
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.header("Access-Control-Allow-Credentials", "true");
+
+    if (req.method === "OPTIONS") {
       return res.sendStatus(200);
     }
-    
+
     return next();
   }
-  
+
   // Si es uno de los dominios principales, permitir
   if (mainDomains.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    
-    if (req.method === 'OPTIONS') {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET, PUT, POST, DELETE, OPTIONS"
+    );
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.header("Access-Control-Allow-Credentials", "true");
+
+    if (req.method === "OPTIONS") {
       return res.sendStatus(200);
     }
-    
+
     return next();
   }
-  
+
   try {
     // Extraer el subdominio del origen
     let hostname = new URL(origin).hostname;
-    let subdomain = hostname.split('.')[0];
-    
+    let subdomain = hostname.split(".")[0];
+
     // Buscar en la base de datos si existe un blog con este subdominio
     const blog = await prisma.blog.findFirst({
-      where: { subdomain: subdomain }
+      where: { subdomain: subdomain },
     });
-    
+
     if (blog) {
       // Si existe el blog, permitir el acceso
-      res.header('Access-Control-Allow-Origin', origin);
-      res.header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-      res.header('Access-Control-Allow-Credentials', 'true');
-      
-      console.log(`CORS: Permitiendo acceso desde ${origin} (subdominio: ${subdomain})`);
+      res.header("Access-Control-Allow-Origin", origin);
+      res.header(
+        "Access-Control-Allow-Methods",
+        "GET, PUT, POST, DELETE, OPTIONS"
+      );
+      res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+      res.header("Access-Control-Allow-Credentials", "true");
+
+      console.log(
+        `CORS: Permitiendo acceso desde ${origin} (subdominio: ${subdomain})`
+      );
     } else {
       // Si no existe, registrar el intento
-      console.log(`CORS: Bloqueando acceso desde ${origin} (subdominio: ${subdomain} no encontrado)`);
+      console.log(
+        `CORS: Bloqueando acceso desde ${origin} (subdominio: ${subdomain} no encontrado)`
+      );
     }
   } catch (error) {
-    console.error('Error verificando CORS:', error);
+    console.error("Error verificando CORS:", error);
   }
-  
-  if (req.method === 'OPTIONS') {
+
+  if (req.method === "OPTIONS") {
     return res.sendStatus(200);
   }
-  
+
   next();
 };
 
