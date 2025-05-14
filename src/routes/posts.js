@@ -159,7 +159,6 @@ router.get("/:id", async (req, res) => {
       } catch (parseError) {
         console.log("No se pudo parsear el ID como número");
       }
-    }
     
     // Si llegamos aquí, no se encontró el post
     return res.status(404).json({ error: "Post not found" });
