@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 const router = express.Router();
 
 // Endpoint protegido para el CMS
-router.get("/protected", authenticateUser, async (req, res) => {
+router.get("/", authenticateUser, async (req, res) => {
   try {
     let posts;
     if (req.user.role === 'SUPER_ADMIN') {
