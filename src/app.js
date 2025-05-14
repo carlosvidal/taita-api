@@ -347,8 +347,8 @@ app.use("/uploads", express.static(uploadsPath));
 app.use(express.static(path.join(__dirname, "../public")));
 
 // Rutas de la API
+app.use("/api/public/posts", postsPublicRouter); // Ruta pública para posts (sin autenticación)
 app.use("/api/posts", postsRouter);
-app.use("/api/posts/public", postsPublicRouter); // Ruta pública para posts (sin autenticación)
 app.use("/api/cms-posts", cmsPostsRouter); // Nueva ruta para posts del CMS
 app.use("/api/cms-pages", cmsPagesRouter); // Nueva ruta para pages del CMS
 app.use("/api/categories", categoriesRouter);
