@@ -1,109 +1,9 @@
 import express from "express";
 import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
-const router = express.Router();
-
-// Get all posts
 import { authenticateUser } from '../middleware/authMiddleware.js';
 
-// Endpoint público para obtener posts publicados (para el frontend público)
-router.get("/public", async (req, res) => {
-  try {
-    // Obtener el subdominio y dominio de la solicitud
-    const host = req.headers.host || '';
-    console.log('Host completo:', host);
-    
-    // Extraer subdominio y dominio
-    let subdomain = '';
-    let domain = '';
-    
-    // Manejar casos especiales como localhost o IP
-    if (host.includes('localhost') || host.includes('127.0.0.1')) {
-      subdomain = req.query.subdomain || 'demo'; // Usar un subdominio por defecto para desarrollo local
-      console.log('Desarrollo local, usando subdominio:', subdomain);
-    } else {
-      // Dividir el host por puntos
-      const parts = host.split('.');
-      
-      if (parts.length >= 3 && parts[0] !== 'www') {
-        // Formato: subdomain.domain.tld
-        subdomain = parts[0];
-        domain = parts.slice(1).join('.');
-      } else if (parts.length === 2) {
-        // Formato: domain.tld (sin subdominio)
-        domain = host;
-      } else if (parts[0] === 'www' && parts.length >= 3) {
-        // Formato: www.domain.tld
-        domain = parts.slice(1).join('.');
-      }
-    
-    console.log('Subdominio extraído:', subdomain);
-    console.log('Dominio extraído:', domain);
-    
-    // Buscar el blog por subdominio y/o dominio
-    let blog;
-    
-    if (subdomain) {
-      // Primero intentar buscar por subdominio y dominio
-      if (domain) {
-        blog = await prisma.blog.findFirst({
-          where: {
-            subdomain,
-            domain
-          }
-        });
-      }
-      
-      // Si no se encuentra, buscar solo por subdominio
-      if (!blog) {
-        blog = await prisma.blog.findFirst({
-          where: { subdomain }
-        });
-      }
-    } else if (req.query.blogId) {
-      // Si no hay subdominio pero se proporciona un blogId en la consulta
-      blog = await prisma.blog.findUnique({
-        where: { id: parseInt(req.query.blogId) }
-      });
-    } else if (req.query.blogUuid) {
-      // Si se proporciona un UUID de blog en la consulta
-      blog = await prisma.blog.findFirst({
-        where: { uuid: req.query.blogUuid }
-      });
-    }
-    
-    if (!blog) {
-      return res.status(404).json({ error: "Blog not found" });
-    }
-    
-    console.log('Blog encontrado:', blog.name, 'ID:', blog.id);
-    
-    // Obtener solo los posts publicados del blog
-    const posts = await prisma.post.findMany({
-      where: {
-        blogId: blog.id,
-        status: 'PUBLISHED'
-      },
-      include: {
-        category: true,
-        author: {
-          select: {
-            id: true,
-            uuid: true,
-            name: true
-          }
-        }
-      },
-      orderBy: { publishedAt: "desc" }
-    });
-    
-    console.log(`Encontrados ${posts.length} posts publicados para el blog ${blog.name}`);
-    res.json(posts);
-  } catch (error) {
-    console.error('Error al obtener posts públicos:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
+const prisma = new PrismaClient();
+const router = express.Router();
 
 // Endpoint protegido para el CMS
 router.get("/protected", authenticateUser, async (req, res) => {
@@ -121,22 +21,30 @@ router.get("/protected", authenticateUser, async (req, res) => {
               name: true,
               email: true
             }
+          },
+          blog: {
+            select: {
+              id: true,
+              uuid: true,
+              name: true,
+              subdomain: true
+            }
           }
         },
-        orderBy: { updatedAt: "desc" },
+        orderBy: { createdAt: "desc" }
       });
     } else {
-      // Otros usuarios solo ven los posts de su blog
-      // Buscar el blog asociado al usuario
-      const blog = await prisma.blog.findUnique({
-        where: { adminId: req.user.id },
-        select: { id: true }
+      // Usuarios normales solo ven posts de sus blogs
+      const userBlogs = await prisma.blog.findMany({
+        where: { adminId: req.user.id }
       });
-      if (!blog) {
-        return res.json([]); // Usuario sin blog propio
-      }
+      
+      const blogIds = userBlogs.map(blog => blog.id);
+      
       posts = await prisma.post.findMany({
-        where: { blogId: blog.id },
+        where: {
+          blogId: { in: blogIds }
+        },
         include: {
           category: true,
           author: {
@@ -146,11 +54,20 @@ router.get("/protected", authenticateUser, async (req, res) => {
               name: true,
               email: true
             }
+          },
+          blog: {
+            select: {
+              id: true,
+              uuid: true,
+              name: true,
+              subdomain: true
+            }
           }
         },
-        orderBy: { updatedAt: "desc" },
+        orderBy: { createdAt: "desc" }
       });
     }
+    
     res.json(posts);
   } catch (error) {
     console.error('Error al obtener posts:', error);
@@ -158,110 +75,62 @@ router.get("/protected", authenticateUser, async (req, res) => {
   }
 });
 
-// Count posts
-router.get("/count", async (req, res) => {
+// Get post by ID
+router.get("/:id", authenticateUser, async (req, res) => {
   try {
-    const count = await prisma.post.count();
-    res.json({ count });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Check if a slug is already in use
-router.get("/check-slug", async (req, res) => {
-  try {
-    const { slug } = req.query;
-    
-    if (!slug) {
-      return res.status(400).json({ error: "Slug parameter is required" });
-    }
-    
-    // Verificar si el slug ya existe en la base de datos
-    const existingPost = await prisma.post.findUnique({
-      where: { slug },
-      select: { id: true, uuid: true }
-    });
-    
-    res.json({ exists: !!existingPost, post: existingPost });
-  } catch (error) {
-    console.error("Error al verificar slug:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get single post by UUID
-router.get("/uuid/:uuid", async (req, res) => {
-  try {
-    console.log("Buscando post por UUID:", req.params.uuid);
+    const { id } = req.params;
     const post = await prisma.post.findUnique({
-      where: { uuid: req.params.uuid },
-      include: { 
-        category: true, 
-        author: true,
-        blog: true // Incluir la información del blog
-      },
-    });
-    if (!post) return res.status(404).json({ error: "Post not found" });
-    console.log("Post encontrado:", {
-      id: post.id,
-      uuid: post.uuid,
-      title: post.title,
-      blogId: post.blogId,
-      blog: post.blog ? { id: post.blog.id, name: post.blog.name } : null
-    });
-    res.json(post);
-  } catch (error) {
-    console.error("Error al buscar post por UUID:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get single post by ID or UUID
-router.get("/:id", async (req, res) => {
-  try {
-    // Verificar si el ID podría ser un UUID
-    if (req.params.id && req.params.id.includes('-')) {
-      console.log("El ID parece ser un UUID, buscando por UUID...");
-      const post = await prisma.post.findUnique({
-        where: { uuid: req.params.id },
-        include: { 
-          category: true, 
-          author: true,
-          blog: true // Incluir la información del blog
-        },
-      });
-      if (post) {
-        return res.json(post);
+      where: { id: Number(id) },
+      include: {
+        category: true,
+        author: {
+          select: {
+            id: true,
+            uuid: true,
+            name: true,
+            email: true
+          }
+        }
       }
+    });
     
-    // Intentar buscar por ID numérico
-    console.log("Buscando post por ID numérico:", req.params.id);
-    const postId = parseInt(req.params.id);
-    if (isNaN(postId)) {
+    if (!post) {
       return res.status(404).json({ error: "Post not found" });
     }
     
-    // Si no es un UUID, intentamos buscar por ID numérico
-    try {
-      const postById = await prisma.post.findUnique({
-        where: { id: postId },
-        include: { 
-          category: true, 
-          author: true,
-          blog: true // Incluir la información del blog
-        },
-      });
-        if (postById) {
-          return res.json(postById);
-        }
-      } catch (parseError) {
-        console.log("No se pudo parsear el ID como número");
-      }
-    
-    // Si llegamos aquí, no se encontró el post
-    return res.status(404).json({ error: "Post not found" });
+    res.json(post);
   } catch (error) {
+    console.error('Error al obtener post por ID:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get post by UUID
+router.get("/uuid/:uuid", authenticateUser, async (req, res) => {
+  try {
+    const { uuid } = req.params;
+    const post = await prisma.post.findFirst({
+      where: { uuid },
+      include: {
+        category: true,
+        author: {
+          select: {
+            id: true,
+            uuid: true,
+            name: true,
+            email: true
+          }
+        }
+      }
+    });
+    
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+    
+    res.json(post);
+  } catch (error) {
+    console.error('Error al obtener post por UUID:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -269,283 +138,106 @@ router.get("/:id", async (req, res) => {
 // Create post
 router.post("/", authenticateUser, async (req, res) => {
   try {
-    const { title, content, slug, categoryId, authorId, excerpt, status, image, imageId, thumbnail, blogId } = req.body;
-    console.log("Creando nuevo post:", req.body);
+    const { title, content, excerpt, slug, status, categoryId, blogId } = req.body;
     
-    if (!blogId) {
-      return res.status(400).json({ error: "El campo blogId es obligatorio" });
+    // Validar que el blog exista
+    const blog = await prisma.blog.findUnique({
+      where: { id: Number(blogId) }
+    });
+    
+    if (!blog) {
+      return res.status(404).json({ error: "Blog not found" });
     }
     
-    // Convertir el status a mayúsculas para que coincida con el enum PublishStatus
-    const statusValue = status ? status.toUpperCase() : 'DRAFT';
+    // Validar que la categoría exista
+    const category = await prisma.category.findUnique({
+      where: { id: Number(categoryId) }
+    });
     
-    // Preparar los datos para la creación
-    const postData = {
-      title,
-      content,
-      slug,
-      excerpt: excerpt || "",
-      status: statusValue,
-      author: { connect: { id: authorId } },
-      blog: { connect: { id: parseInt(blogId) } }
-    };
-    
-    console.log("Conectando post al blog ID:", blogId);
-    
-    // Manejar la categoría si se proporciona
-    if (categoryId) {
-      try {
-        const categoryIdInt = parseInt(categoryId);
-        if (!isNaN(categoryIdInt)) {
-          postData.category = { connect: { id: categoryIdInt } };
-          console.log(`Conectando post a categoría ID: ${categoryIdInt}`);
-        } else {
-          console.log(`ID de categoría no válido: ${categoryId}`);
-        }
-      } catch (error) {
-        console.error(`Error al procesar ID de categoría: ${categoryId}`, error);
-      }
-    
-    // Manejar la imagen si se proporciona
-    if (image) {
-      console.log("Incluyendo imagen en el nuevo post:", image);
-      postData.image = image;
-      
-      if (imageId) {
-        postData.imageId = parseInt(imageId);
-        console.log("ID de imagen convertido a entero:", postData.imageId);
-      }
-    
-    // Manejar la miniatura si se proporciona
-    if (thumbnail) {
-      postData.thumbnail = thumbnail;
+    if (!category) {
+      return res.status(404).json({ error: "Category not found" });
     }
     
-    console.log("Datos finales para crear post:", postData);
-    
+    // Crear el post
     const post = await prisma.post.create({
-      data: postData,
-      include: {
-        category: true,
-        author: true
-      });
-    
-    console.log("Post creado exitosamente:", {
-      id: post.id,
-      uuid: post.uuid,
-      title: post.title,
-      image: post.image,
-      imageId: post.imageId
-    });
-    
-    res.json(post);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// Update post by UUID
-router.put("/uuid/:uuid", async (req, res) => {
-  try {
-    const { title, content, slug, categoryId, authorId, excerpt, status, image, imageId, removeImage, thumbnail } = req.body;
-    console.log("Actualizando post por UUID:", req.params.uuid);
-    console.log("Datos recibidos:", req.body);
-    
-    // Primero, obtener el post actual para asegurarnos de no perder datos
-    const existingPost = await prisma.post.findUnique({
-      where: { uuid: req.params.uuid },
-      include: {
-        category: true,
-        author: true
-      });
-    
-    if (!existingPost) {
-      return res.status(404).json({ error: "Post no encontrado" });
-    }
-    
-    console.log("Post existente:", {
-      id: existingPost.id,
-      uuid: existingPost.uuid,
-      title: existingPost.title,
-      categoryId: existingPost.category?.id,
-      authorId: existingPost.author?.id,
-      image: existingPost.image,
-      imageId: existingPost.imageId
-    });
-    
-    // Preparar los datos para la actualización, manteniendo los valores existentes si no se proporcionan nuevos
-    const updateData = {};
-    
-    // Actualizar campos básicos solo si se proporcionan
-    if (title !== undefined) updateData.title = title;
-    if (content !== undefined) updateData.content = content;
-    if (slug !== undefined) updateData.slug = slug;
-    if (excerpt !== undefined) updateData.excerpt = excerpt || "";
-    
-    // Manejar el status
-    if (status !== undefined) {
-      // Convertir el status a mayúsculas para que coincida con el enum PublishStatus
-      updateData.status = status.toUpperCase();
-    }
-    
-    // Manejar la relación del autor si se proporciona
-    if (authorId) {
-      updateData.author = { connect: { id: parseInt(authorId) } };
-    }
-    
-    // Manejar la relación de la categoría si se proporciona
-    if (categoryId) {
-      try {
-        const categoryIdInt = parseInt(categoryId);
-        if (!isNaN(categoryIdInt)) {
-          updateData.category = { connect: { id: categoryIdInt } };
-          console.log(`Conectando post a categoría ID: ${categoryIdInt}`);
-        } else {
-          console.log(`ID de categoría no válido: ${categoryId}`);
-        }
-      } catch (error) {
-        console.error(`Error al procesar ID de categoría: ${categoryId}`, error);
-      }
-    
-    // Manejar la imagen
-    if (image !== undefined) {
-      console.log("Actualizando imagen del post:", image);
-      updateData.image = image;
-      
-      // Ahora el modelo Post tiene campo imageId, igual que Page
-      if (imageId) {
-        try {
-          updateData.imageId = parseInt(imageId);
-          console.log("ID de imagen convertido a entero:", updateData.imageId);
-        } catch (error) {
-          console.error("Error al convertir imageId a entero:", error);
-        }
-      } else if (removeImage) {
-      console.log("Eliminando imagen del post");
-      updateData.image = null;
-      updateData.imageId = null;
-    }
-    
-    // Manejar la miniatura si se proporciona
-    if (thumbnail !== undefined) {
-      updateData.thumbnail = thumbnail;
-    }
-    
-    console.log("Datos finales para actualizar:", JSON.stringify(updateData, null, 2));
-    
-    const post = await prisma.post.update({
-      where: { uuid: req.params.uuid },
-      data: updateData,
-      include: {
-        category: true,
-        author: true
-      });
-    
-    console.log("Post actualizado exitosamente:", {
-      id: post.id,
-      uuid: post.uuid,
-      title: post.title,
-      image: post.image,
-      imageId: post.imageId,
-      categoryId: post.category?.id
-    });
-    
-    res.json(post);
-  } catch (error) {
-    console.error("Error al actualizar post por UUID:", error);
-    console.error("Detalles del error:", {
-      message: error.message,
-      code: error.code,
-      meta: error.meta
-    });
-    
-    // Proporcionar un mensaje de error más detallado
-    let errorMessage = error.message;
-    if (error.meta && error.meta.field_name) {
-      errorMessage = `Error en el campo ${error.meta.field_name}: ${error.message}`;
-    }
-    
-    res.status(400).json({ 
-      error: errorMessage,
-      details: error.meta,
-      code: error.code
-    });
-  }
-});
-
-// Update post by ID (para compatibilidad)
-router.put("/:id", async (req, res) => {
-  try {
-    // Verificar si el ID parece ser un UUID (contiene guiones)
-    if (req.params.id.includes('-')) {
-      // Si es un UUID, redirigir a la ruta de UUID
-      const { title, content, slug, categoryId, image, thumbnail } = req.body;
-      const post = await prisma.post.update({
-        where: { uuid: req.params.id },
-        data: {
-          title,
-          content,
-          slug,
-          categoryId: parseInt(categoryId),
-          image,
-          thumbnail,
-        },
-      });
-      return res.json(post);
-    }
-    
-    // Si no es un UUID, procesar como ID numérico
-    const { title, content, slug, categoryId, image, thumbnail } = req.body;
-    const post = await prisma.post.update({
-      where: { id: parseInt(req.params.id) },
       data: {
         title,
         content,
+        excerpt,
         slug,
-        categoryId: parseInt(categoryId),
-        image,
-        thumbnail,
-      },
+        status,
+        blogId: Number(blogId),
+        categoryId: Number(categoryId),
+        authorId: req.user.id,
+        publishedAt: status === 'PUBLISHED' ? new Date() : null
+      }
     });
-    res.json(post);
+    
+    res.status(201).json(post);
   } catch (error) {
-    console.error("Error al actualizar post:", error);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// Delete post by UUID
-router.delete("/uuid/:uuid", async (req, res) => {
-  try {
-    await prisma.post.delete({
-      where: { uuid: req.params.uuid },
-    });
-    res.json({ message: "Post deleted successfully" });
-  } catch (error) {
-    console.error("Error al eliminar post por UUID:", error);
+    console.error('Error al crear post:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Delete post by ID (para compatibilidad)
-router.delete("/:id", async (req, res) => {
+// Update post
+router.patch("/:id", authenticateUser, async (req, res) => {
   try {
-    // Verificar si el ID parece ser un UUID (contiene guiones)
-    if (req.params.id.includes('-')) {
-      // Si es un UUID, redirigir a la ruta de UUID
-      await prisma.post.delete({
-        where: { uuid: req.params.id },
-      });
-      return res.json({ message: "Post deleted successfully" });
+    const { id } = req.params;
+    const { title, content, excerpt, slug, status, categoryId } = req.body;
+    
+    // Verificar si el post existe
+    const existingPost = await prisma.post.findUnique({
+      where: { id: Number(id) }
+    });
+    
+    if (!existingPost) {
+      return res.status(404).json({ error: "Post not found" });
     }
     
-    // Si no es un UUID, procesar como ID numérico
-    await prisma.post.delete({
-      where: { id: parseInt(req.params.id) },
+    // Actualizar el post
+    const updatedPost = await prisma.post.update({
+      where: { id: Number(id) },
+      data: {
+        title,
+        content,
+        excerpt,
+        slug,
+        status,
+        categoryId: Number(categoryId),
+        publishedAt: status === 'PUBLISHED' && !existingPost.publishedAt ? new Date() : existingPost.publishedAt
+      }
     });
+    
+    res.json(updatedPost);
+  } catch (error) {
+    console.error('Error al actualizar post:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete post
+router.delete("/:id", authenticateUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Verificar si el post existe
+    const existingPost = await prisma.post.findUnique({
+      where: { id: Number(id) }
+    });
+    
+    if (!existingPost) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+    
+    // Eliminar el post
+    await prisma.post.delete({
+      where: { id: Number(id) }
+    });
+    
     res.json({ message: "Post deleted successfully" });
   } catch (error) {
-    console.error("Error al eliminar post:", error);
+    console.error('Error al eliminar post:', error);
     res.status(500).json({ error: error.message });
   }
 });
