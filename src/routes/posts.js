@@ -158,10 +158,14 @@ router.get("/:id", async (req, res) => {
 });
 
 // Create post
-router.post("/", async (req, res) => {
+router.post("/", authenticateUser, async (req, res) => {
   try {
-    const { title, content, slug, categoryId, authorId, excerpt, status, image, imageId, thumbnail } = req.body;
+    const { title, content, slug, categoryId, authorId, excerpt, status, image, imageId, thumbnail, blogId } = req.body;
     console.log("Creando nuevo post:", req.body);
+    
+    if (!blogId) {
+      return res.status(400).json({ error: "El campo blogId es obligatorio" });
+    }
     
     // Convertir el status a mayúsculas para que coincida con el enum PublishStatus
     const statusValue = status ? status.toUpperCase() : 'DRAFT';
@@ -173,8 +177,11 @@ router.post("/", async (req, res) => {
       slug,
       excerpt: excerpt || "",
       status: statusValue,
-      author: { connect: { id: authorId } }
+      author: { connect: { id: authorId } },
+      blog: { connect: { id: parseInt(blogId) } }
     };
+    
+    console.log("Conectando post al blog ID:", blogId);
     
     // Manejar la categoría si se proporciona
     if (categoryId) {
