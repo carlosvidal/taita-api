@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcryptjs";
 import categoriesRouter from "./routes/categories.js";
 import postsRouter from "./routes/posts.js";
+import postsPublicRouter from "./routes/posts-public.js";
 import cmsPostsRouter from "./routes/cmsPosts.js";
 import cmsPagesRouter from "./routes/cmsPages.js";
 import pagesRouter from "./routes/pages.js";
@@ -347,6 +348,7 @@ app.use(express.static(path.join(__dirname, "../public")));
 
 // Rutas de la API
 app.use("/api/posts", postsRouter);
+app.use("/api/posts/public", postsPublicRouter); // Ruta pública para posts (sin autenticación)
 app.use("/api/cms-posts", cmsPostsRouter); // Nueva ruta para posts del CMS
 app.use("/api/cms-pages", cmsPagesRouter); // Nueva ruta para pages del CMS
 app.use("/api/categories", categoriesRouter);
