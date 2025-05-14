@@ -96,9 +96,20 @@ router.get("/uuid/:uuid", async (req, res) => {
     console.log("Buscando post por UUID:", req.params.uuid);
     const post = await prisma.post.findUnique({
       where: { uuid: req.params.uuid },
-      include: { category: true, author: true },
+      include: { 
+        category: true, 
+        author: true,
+        blog: true // Incluir la información del blog
+      },
     });
     if (!post) return res.status(404).json({ error: "Post not found" });
+    console.log("Post encontrado:", {
+      id: post.id,
+      uuid: post.uuid,
+      title: post.title,
+      blogId: post.blogId,
+      blog: post.blog ? { id: post.blog.id, name: post.blog.name } : null
+    });
     res.json(post);
   } catch (error) {
     console.error("Error al buscar post por UUID:", error);
@@ -114,7 +125,11 @@ router.get("/:id", async (req, res) => {
       console.log("El ID parece ser un UUID, buscando por UUID...");
       const post = await prisma.post.findUnique({
         where: { uuid: req.params.id },
-        include: { category: true, author: true },
+        include: { 
+          category: true, 
+          author: true,
+          blog: true // Incluir la información del blog
+        },
       });
       if (post) {
         return res.json(post);
@@ -122,26 +137,22 @@ router.get("/:id", async (req, res) => {
     }
     
     // Intentar buscar por ID numérico
-    // Primero intentamos buscar por UUID si el ID contiene guiones (característica de UUID)
-    if (req.params.id.includes('-')) {
-      try {
-        const postByUuid = await prisma.post.findUnique({
-          where: { uuid: req.params.id },
-          include: { category: true, author: true },
-        });
-        if (postByUuid) {
-          return res.json(postByUuid);
-        }
-      } catch (uuidError) {
-        console.log("Error al buscar por UUID:", uuidError);
-      }
-    } else {
-      // Si no es un UUID, intentamos buscar por ID numérico
-      try {
-        const postById = await prisma.post.findUnique({
-          where: { id: parseInt(req.params.id) },
-          include: { category: true, author: true },
-        });
+    console.log("Buscando post por ID numérico:", req.params.id);
+    const postId = parseInt(req.params.id);
+    if (isNaN(postId)) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+    
+    // Si no es un UUID, intentamos buscar por ID numérico
+    try {
+      const postById = await prisma.post.findUnique({
+        where: { id: postId },
+        include: { 
+          category: true, 
+          author: true,
+          blog: true // Incluir la información del blog
+        },
+      });
         if (postById) {
           return res.json(postById);
         }
