@@ -9,18 +9,57 @@ import { authenticateUser } from '../middleware/authMiddleware.js';
 // Endpoint público para obtener posts publicados (para el frontend público)
 router.get("/public", async (req, res) => {
   try {
-    // Obtener el subdominio de la solicitud
+    // Obtener el subdominio y dominio de la solicitud
     const host = req.headers.host || '';
-    const subdomain = host.split('.')[0];
-    console.log('Host:', host);
-    console.log('Subdomain:', subdomain);
+    console.log('Host completo:', host);
     
-    // Buscar el blog por subdominio
+    // Extraer subdominio y dominio
+    let subdomain = '';
+    let domain = '';
+    
+    // Manejar casos especiales como localhost o IP
+    if (host.includes('localhost') || host.includes('127.0.0.1')) {
+      subdomain = req.query.subdomain || 'demo'; // Usar un subdominio por defecto para desarrollo local
+      console.log('Desarrollo local, usando subdominio:', subdomain);
+    } else {
+      // Dividir el host por puntos
+      const parts = host.split('.');
+      
+      if (parts.length >= 3 && parts[0] !== 'www') {
+        // Formato: subdomain.domain.tld
+        subdomain = parts[0];
+        domain = parts.slice(1).join('.');
+      } else if (parts.length === 2) {
+        // Formato: domain.tld (sin subdominio)
+        domain = host;
+      } else if (parts[0] === 'www' && parts.length >= 3) {
+        // Formato: www.domain.tld
+        domain = parts.slice(1).join('.');
+      }
+    
+    console.log('Subdominio extraído:', subdomain);
+    console.log('Dominio extraído:', domain);
+    
+    // Buscar el blog por subdominio y/o dominio
     let blog;
-    if (subdomain && subdomain !== 'localhost' && subdomain !== 'www' && !subdomain.includes('127.0.0.1')) {
-      blog = await prisma.blog.findFirst({
-        where: { subdomain }
-      });
+    
+    if (subdomain) {
+      // Primero intentar buscar por subdominio y dominio
+      if (domain) {
+        blog = await prisma.blog.findFirst({
+          where: {
+            subdomain,
+            domain
+          }
+        });
+      }
+      
+      // Si no se encuentra, buscar solo por subdominio
+      if (!blog) {
+        blog = await prisma.blog.findFirst({
+          where: { subdomain }
+        });
+      }
     } else if (req.query.blogId) {
       // Si no hay subdominio pero se proporciona un blogId en la consulta
       blog = await prisma.blog.findUnique({
@@ -67,7 +106,7 @@ router.get("/public", async (req, res) => {
 });
 
 // Endpoint protegido para el CMS
-router.get("/", authenticateUser, async (req, res) => {
+router.get("/protected", authenticateUser, async (req, res) => {
   try {
     let posts;
     if (req.user.role === 'SUPER_ADMIN') {
@@ -195,7 +234,6 @@ router.get("/:id", async (req, res) => {
       if (post) {
         return res.json(post);
       }
-    }
     
     // Intentar buscar por ID numérico
     console.log("Buscando post por ID numérico:", req.params.id);
@@ -267,7 +305,6 @@ router.post("/", authenticateUser, async (req, res) => {
       } catch (error) {
         console.error(`Error al procesar ID de categoría: ${categoryId}`, error);
       }
-    }
     
     // Manejar la imagen si se proporciona
     if (image) {
@@ -278,7 +315,6 @@ router.post("/", authenticateUser, async (req, res) => {
         postData.imageId = parseInt(imageId);
         console.log("ID de imagen convertido a entero:", postData.imageId);
       }
-    }
     
     // Manejar la miniatura si se proporciona
     if (thumbnail) {
@@ -292,8 +328,7 @@ router.post("/", authenticateUser, async (req, res) => {
       include: {
         category: true,
         author: true
-      }
-    });
+      });
     
     console.log("Post creado exitosamente:", {
       id: post.id,
@@ -322,8 +357,7 @@ router.put("/uuid/:uuid", async (req, res) => {
       include: {
         category: true,
         author: true
-      }
-    });
+      });
     
     if (!existingPost) {
       return res.status(404).json({ error: "Post no encontrado" });
@@ -372,7 +406,6 @@ router.put("/uuid/:uuid", async (req, res) => {
       } catch (error) {
         console.error(`Error al procesar ID de categoría: ${categoryId}`, error);
       }
-    }
     
     // Manejar la imagen
     if (image !== undefined) {
@@ -387,8 +420,7 @@ router.put("/uuid/:uuid", async (req, res) => {
         } catch (error) {
           console.error("Error al convertir imageId a entero:", error);
         }
-      }
-    } else if (removeImage) {
+      } else if (removeImage) {
       console.log("Eliminando imagen del post");
       updateData.image = null;
       updateData.imageId = null;
@@ -407,8 +439,7 @@ router.put("/uuid/:uuid", async (req, res) => {
       include: {
         category: true,
         author: true
-      }
-    });
+      });
     
     console.log("Post actualizado exitosamente:", {
       id: post.id,
