@@ -6,6 +6,67 @@ const router = express.Router();
 // Get all posts
 import { authenticateUser } from '../middleware/authMiddleware.js';
 
+// Endpoint público para obtener posts publicados (para el frontend público)
+router.get("/public", async (req, res) => {
+  try {
+    // Obtener el subdominio de la solicitud
+    const host = req.headers.host || '';
+    const subdomain = host.split('.')[0];
+    console.log('Host:', host);
+    console.log('Subdomain:', subdomain);
+    
+    // Buscar el blog por subdominio
+    let blog;
+    if (subdomain && subdomain !== 'localhost' && subdomain !== 'www' && !subdomain.includes('127.0.0.1')) {
+      blog = await prisma.blog.findFirst({
+        where: { subdomain }
+      });
+    } else if (req.query.blogId) {
+      // Si no hay subdominio pero se proporciona un blogId en la consulta
+      blog = await prisma.blog.findUnique({
+        where: { id: parseInt(req.query.blogId) }
+      });
+    } else if (req.query.blogUuid) {
+      // Si se proporciona un UUID de blog en la consulta
+      blog = await prisma.blog.findFirst({
+        where: { uuid: req.query.blogUuid }
+      });
+    }
+    
+    if (!blog) {
+      return res.status(404).json({ error: "Blog not found" });
+    }
+    
+    console.log('Blog encontrado:', blog.name, 'ID:', blog.id);
+    
+    // Obtener solo los posts publicados del blog
+    const posts = await prisma.post.findMany({
+      where: {
+        blogId: blog.id,
+        status: 'PUBLISHED'
+      },
+      include: {
+        category: true,
+        author: {
+          select: {
+            id: true,
+            uuid: true,
+            name: true
+          }
+        }
+      },
+      orderBy: { publishedAt: "desc" }
+    });
+    
+    console.log(`Encontrados ${posts.length} posts publicados para el blog ${blog.name}`);
+    res.json(posts);
+  } catch (error) {
+    console.error('Error al obtener posts públicos:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint protegido para el CMS
 router.get("/", authenticateUser, async (req, res) => {
   try {
     let posts;
