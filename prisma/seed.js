@@ -32,6 +32,11 @@ async function main() {
     where: { adminId: admin.id }
   });
 
+  // También buscamos por subdomain para evitar conflictos
+  let existingBlogBySubdomain = await prisma.blog.findFirst({
+    where: { subdomain: "demo" }
+  });
+
   let blog;
   if (existingBlog) {
     // Si ya existe, solo lo actualizamos
@@ -45,6 +50,18 @@ async function main() {
       }
     });
     console.log("Blog existente actualizado");
+  } else if (existingBlogBySubdomain) {
+    // Si existe un blog con el mismo subdominio, lo actualizamos y lo asociamos al admin
+    blog = await prisma.blog.update({
+      where: { id: existingBlogBySubdomain.id },
+      data: {
+        name: "Blog Principal",
+        title: "Blog Principal",
+        description: "Un blog de ejemplo para pruebas.",
+        adminId: admin.id
+      }
+    });
+    console.log("Blog existente por subdominio actualizado y asociado al admin");
   } else {
     // Si no existe, lo creamos
     blog = await prisma.blog.create({

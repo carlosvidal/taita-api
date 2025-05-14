@@ -54,11 +54,22 @@ const dynamicCorsMiddleware = async (req, res, next) => {
     "https://taita.blog",
     "https://www.taita.blog",
     "https://cms.taita.blog",
+    "https://super-admin.taita.blog",
     // Dominios de Render.com
     "https://taita-frontend.onrender.com",
     "https://taita-api.onrender.com",
     "https://taita-cms.onrender.com",
   ];
+  
+  // Función para verificar si un origen es un subdominio de taita.blog
+  const isTaitaSubdomain = (origin) => {
+    try {
+      const hostname = new URL(origin).hostname;
+      return hostname.endsWith('.taita.blog') || hostname === 'taita.blog';
+    } catch (error) {
+      return false;
+    }
+  };
 
   // Si no hay origen o es un entorno de desarrollo, permitir
   if (!origin || devOrigins.includes(origin)) {
@@ -77,8 +88,8 @@ const dynamicCorsMiddleware = async (req, res, next) => {
     return next();
   }
 
-  // Si es uno de los dominios principales, permitir
-  if (mainDomains.includes(origin)) {
+  // Si es uno de los dominios principales o un subdominio de taita.blog, permitir
+  if (mainDomains.includes(origin) || isTaitaSubdomain(origin)) {
     res.header("Access-Control-Allow-Origin", origin);
     res.header(
       "Access-Control-Allow-Methods",
