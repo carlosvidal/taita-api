@@ -79,7 +79,24 @@ router.get("/", authenticateUser, async (req, res) => {
 router.get("/public", async (req, res) => {
   try {
     const host = req.headers.host || '';
-    const [subdomain, domain] = host.split('.');
+    
+    console.log('Endpoint /public');
+    console.log('Host recibido:', host);
+    
+    // Extraer el subdominio del host
+    let subdomain;
+    if (host.includes('.')) {
+      // Si es un dominio completo (ej: blog.example.com)
+      subdomain = host.split('.')[0];
+    } else if (host.includes(':')) {
+      // Si es localhost con puerto (ej: localhost:3000)
+      subdomain = 'demo'; // Usar demo como subdominio por defecto en desarrollo
+    } else {
+      // Caso por defecto
+      subdomain = host;
+    }
+    
+    console.log('Subdominio extraído:', subdomain);
     
     // Buscar el blog por subdominio
     const blog = await prisma.blog.findFirst({
@@ -88,10 +105,41 @@ router.get("/public", async (req, res) => {
       }
     });
     
+    console.log('Blog encontrado:', blog);
+    
     if (!blog) {
-      return res.status(404).json({ error: "Blog not found" });
+      console.log('Blog no encontrado para el subdominio:', subdomain);
+      // Si no se encuentra un blog específico, intentar obtener cualquier blog
+      const anyBlog = await prisma.blog.findFirst();
+      if (!anyBlog) {
+        return res.status(404).json({ error: "No blogs found in the system" });
+      }
+      console.log('Usando blog alternativo:', anyBlog);
+      // Usar el primer blog disponible
+      const posts = await prisma.post.findMany({
+        where: {
+          blogId: anyBlog.id,
+          status: 'PUBLISHED'
+        },
+        include: {
+          category: true,
+          author: {
+            select: {
+              id: true,
+              name: true,
+              bio: true,
+              avatar: true
+            }
+          }
+        },
+        orderBy: { publishedAt: "desc" }
+      });
+      
+      console.log('Posts encontrados con blog alternativo:', posts.length);
+      return res.json(posts);
     }
     
+    // Buscar posts con el blog encontrado
     const posts = await prisma.post.findMany({
       where: {
         blogId: blog.id,
@@ -111,6 +159,7 @@ router.get("/public", async (req, res) => {
       orderBy: { publishedAt: "desc" }
     });
     
+    console.log('Posts encontrados:', posts.length);
     res.json(posts);
   } catch (error) {
     console.error('Error al obtener posts públicos:', error);
@@ -123,7 +172,25 @@ router.get("/public/slug/:slug", async (req, res) => {
   try {
     const { slug } = req.params;
     const host = req.headers.host || '';
-    const [subdomain, domain] = host.split('.');
+    
+    console.log('Endpoint /public/slug/:slug');
+    console.log('Slug recibido:', slug);
+    console.log('Host recibido:', host);
+    
+    // Extraer el subdominio del host
+    let subdomain;
+    if (host.includes('.')) {
+      // Si es un dominio completo (ej: blog.example.com)
+      subdomain = host.split('.')[0];
+    } else if (host.includes(':')) {
+      // Si es localhost con puerto (ej: localhost:3000)
+      subdomain = 'demo'; // Usar demo como subdominio por defecto en desarrollo
+    } else {
+      // Caso por defecto
+      subdomain = host;
+    }
+    
+    console.log('Subdominio extraído:', subdomain);
     
     // Buscar el blog por subdominio
     const blog = await prisma.blog.findFirst({
@@ -132,10 +199,46 @@ router.get("/public/slug/:slug", async (req, res) => {
       }
     });
     
+    console.log('Blog encontrado:', blog);
+    
     if (!blog) {
-      return res.status(404).json({ error: "Blog not found" });
+      console.log('Blog no encontrado para el subdominio:', subdomain);
+      // Si no se encuentra un blog específico, intentar obtener cualquier blog
+      const anyBlog = await prisma.blog.findFirst();
+      if (!anyBlog) {
+        return res.status(404).json({ error: "No blogs found in the system" });
+      }
+      console.log('Usando blog alternativo:', anyBlog);
+      // Usar el primer blog disponible
+      const posts = await prisma.post.findMany({
+        where: {
+          blogId: anyBlog.id,
+          slug: slug,
+          status: 'PUBLISHED'
+        },
+        include: {
+          category: true,
+          author: {
+            select: {
+              id: true,
+              name: true,
+              bio: true,
+              avatar: true
+            }
+          }
+        }
+      });
+      
+      console.log('Posts encontrados con blog alternativo:', posts.length);
+      
+      if (!posts || posts.length === 0) {
+        return res.status(404).json({ error: "Post not found" });
+      }
+      
+      return res.json(posts);
     }
     
+    // Buscar posts con el blog encontrado
     const posts = await prisma.post.findMany({
       where: {
         blogId: blog.id,
@@ -154,6 +257,8 @@ router.get("/public/slug/:slug", async (req, res) => {
         }
       }
     });
+    
+    console.log('Posts encontrados:', posts.length);
     
     if (!posts || posts.length === 0) {
       return res.status(404).json({ error: "Post not found" });
