@@ -325,8 +325,6 @@ const dynamicCorsMiddleware = async (req, res, next) => {
   next();
 };
 
-import cors from "cors";
-
 // Aplicar el middleware CORS dinámico
 app.use(dynamicCorsMiddleware);
 app.use(express.json());
