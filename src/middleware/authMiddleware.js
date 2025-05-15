@@ -108,10 +108,10 @@ const isAdmin = (req, res, next) => {
     return res.status(401).json({ error: "No autorizado" });
   }
 
-  if (req.user.role !== "ADMIN") {
+  if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN") {
     return res
       .status(403)
-      .json({ error: "Acceso denegado. Se requiere rol de administrador" });
+      .json({ error: "Acceso denegado. Se requiere rol de administrador o super administrador" });
   }
 
   next();
