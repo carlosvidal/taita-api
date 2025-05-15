@@ -7,16 +7,19 @@ import { PrismaClient } from "@prisma/client";
 import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcryptjs";
 import categoriesRouter from "./routes/categories.js";
+import categoriesPublicRouter from "./routes/categories-public.js";
 import postsRouter from "./routes/posts.js";
 import postsPublicRouter from "./routes/posts-public.js";
 import cmsPostsRouter from "./routes/cmsPosts.js";
 import cmsPagesRouter from "./routes/cmsPages.js";
 import pagesRouter from "./routes/pages.js";
 import menuRouter from "./routes/menu.js";
+import menuPublicRouter from "./routes/menu-public.js";
 import statsRouter from "./routes/stats.js";
 import authRouter from "./routes/auth.js";
 import mediaRouter from "./routes/media.js";
 import settingsRouter from "./routes/settings.js";
+import settingsPublicRouter from "./routes/settings-public.js";
 import blogsRouter from "./routes/blogs.js";
 import userProfileRouter from "./routes/userProfile.js";
 import seriesRouter from "./routes/series.js";
@@ -347,14 +350,16 @@ app.use("/uploads", express.static(uploadsPath));
 app.use(express.static(path.join(__dirname, "../public")));
 
 // Rutas de la API
-app.use("/api/public/posts", postsPublicRouter); // Ruta pública para posts (sin autenticación)
+app.use("/api/posts/public", postsPublicRouter); // Ruta pública para posts (sin autenticación)
 app.use("/api/posts", postsRouter);
 app.use("/api/cms-posts", cmsPostsRouter); // Nueva ruta para posts del CMS
 app.use("/api/cms-pages", cmsPagesRouter); // Nueva ruta para pages del CMS
 app.use("/api/categories", categoriesRouter);
+app.use("/api/categories/public", categoriesPublicRouter); // Ruta pública para categorías (sin autenticación)
 app.use("/api/blogs", blogsRouter);
 app.use("/api/pages", pagesRouter);
 app.use("/api/menu", menuRouter);
+app.use("/api/menu/public", menuPublicRouter); // Ruta pública para menú (sin autenticación)
 app.use("/api/series", seriesRouter); // Nueva ruta para series
 app.use("/api/users", userProfileRouter);
 app.use("/api/profile-picture-test", profilePictureTestRouter); // Nueva ruta para imágenes de perfil
@@ -362,7 +367,8 @@ app.use("/api/comments", commentsRouter);
 app.use("/api", statsRouter);
 app.use("/api/auth", authRouter); // Añadir rutas de autenticación
 app.use("/api/media", mediaRouter); // Añadir rutas de medios
-app.use("/api/settings", settingsRouter); // Añadir rutas de configuraciones
+app.use("/api/settings", settingsRouter);
+app.use("/api/settings/public", settingsPublicRouter); // Ruta pública para configuración (sin autenticación) // Añadir rutas de configuraciones
 
 // Importar y usar las nuevas rutas de suscripciones y pagos
 import subscriptionsRouter from "./routes/subscriptions.js";
