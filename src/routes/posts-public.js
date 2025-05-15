@@ -10,29 +10,51 @@ router.get("/", async (req, res) => {
     const host = req.headers.host || '';
     console.log('Host completo:', host);
     
-    // Extraer subdominio y dominio
+    // Extraer subdominio y dominio de múltiples fuentes
     let subdomain = '';
     let domain = '';
     
-    // Manejar casos especiales como localhost o IP
-    if (host.includes('localhost') || host.includes('127.0.0.1')) {
-      subdomain = req.query.subdomain || 'demo'; // Usar un subdominio por defecto para desarrollo local
-      console.log('Desarrollo local, usando subdominio:', subdomain);
-    } else {
-      // Dividir el host por puntos
-      const parts = host.split('.');
-      
-      if (parts.length >= 3 && parts[0] !== 'www') {
-        // Formato: subdomain.domain.tld
-        subdomain = parts[0];
-        domain = parts.slice(1).join('.');
-      } else if (parts.length === 2) {
-        // Formato: domain.tld (sin subdominio)
-        domain = host;
-      } else if (parts[0] === 'www' && parts.length >= 3) {
-        // Formato: www.domain.tld
-        domain = parts.slice(1).join('.');
+    // Priorizar el header X-Taita-Subdomain si está presente
+    if (req.headers['x-taita-subdomain']) {
+      subdomain = req.headers['x-taita-subdomain'];
+      console.log('Usando subdominio del header X-Taita-Subdomain:', subdomain);
+    }
+    // Si no hay header, intentar obtenerlo de los query params
+    else if (req.query.subdomain) {
+      subdomain = req.query.subdomain;
+      console.log('Usando subdominio de query param:', subdomain);
+    }
+    // Como última opción, intentar extraerlo del host
+    else if (host) {
+      // Manejar casos especiales como localhost o IP
+      if (host.includes('localhost') || host.includes('127.0.0.1')) {
+        subdomain = 'demo'; // Usar un subdominio por defecto para desarrollo local
+        console.log('Desarrollo local, usando subdominio por defecto:', subdomain);
+      } else {
+        // Dividir el host por puntos
+        const parts = host.split('.');
+        
+        if (parts.length >= 3 && parts[0] !== 'www') {
+          // Formato: subdomain.domain.tld
+          subdomain = parts[0];
+          domain = parts.slice(1).join('.');
+        } else if (parts.length === 2) {
+          // Formato: domain.tld (sin subdominio)
+          domain = host;
+          subdomain = 'default';
+        } else if (parts[0] === 'www' && parts.length >= 3) {
+          // Formato: www.domain.tld
+          domain = parts.slice(1).join('.');
+          subdomain = 'default';
+        }
       }
+      console.log('Extraído subdominio del host:', subdomain);
+    }
+    
+    // Si aún no tenemos subdominio, usar 'demo' como último recurso
+    if (!subdomain) {
+      subdomain = 'demo';
+      console.log('Usando subdominio por defecto (demo)');
     }
     
     console.log('Subdominio extraído:', subdomain);
@@ -141,29 +163,51 @@ router.get("/:slug", async (req, res) => {
     const host = req.headers.host || '';
     console.log('Host completo:', host);
     
-    // Extraer subdominio y dominio
+    // Extraer subdominio y dominio de múltiples fuentes
     let subdomain = '';
     let domain = '';
     
-    // Manejar casos especiales como localhost o IP
-    if (host.includes('localhost') || host.includes('127.0.0.1')) {
-      subdomain = req.query.subdomain || 'demo'; // Usar un subdominio por defecto para desarrollo local
-      console.log('Desarrollo local, usando subdominio:', subdomain);
-    } else {
-      // Dividir el host por puntos
-      const parts = host.split('.');
-      
-      if (parts.length >= 3 && parts[0] !== 'www') {
-        // Formato: subdomain.domain.tld
-        subdomain = parts[0];
-        domain = parts.slice(1).join('.');
-      } else if (parts.length === 2) {
-        // Formato: domain.tld (sin subdominio)
-        domain = host;
-      } else if (parts[0] === 'www' && parts.length >= 3) {
-        // Formato: www.domain.tld
-        domain = parts.slice(1).join('.');
+    // Priorizar el header X-Taita-Subdomain si está presente
+    if (req.headers['x-taita-subdomain']) {
+      subdomain = req.headers['x-taita-subdomain'];
+      console.log('Usando subdominio del header X-Taita-Subdomain:', subdomain);
+    }
+    // Si no hay header, intentar obtenerlo de los query params
+    else if (req.query.subdomain) {
+      subdomain = req.query.subdomain;
+      console.log('Usando subdominio de query param:', subdomain);
+    }
+    // Como última opción, intentar extraerlo del host
+    else if (host) {
+      // Manejar casos especiales como localhost o IP
+      if (host.includes('localhost') || host.includes('127.0.0.1')) {
+        subdomain = 'demo'; // Usar un subdominio por defecto para desarrollo local
+        console.log('Desarrollo local, usando subdominio por defecto:', subdomain);
+      } else {
+        // Dividir el host por puntos
+        const parts = host.split('.');
+        
+        if (parts.length >= 3 && parts[0] !== 'www') {
+          // Formato: subdomain.domain.tld
+          subdomain = parts[0];
+          domain = parts.slice(1).join('.');
+        } else if (parts.length === 2) {
+          // Formato: domain.tld (sin subdominio)
+          domain = host;
+          subdomain = 'default';
+        } else if (parts[0] === 'www' && parts.length >= 3) {
+          // Formato: www.domain.tld
+          domain = parts.slice(1).join('.');
+          subdomain = 'default';
+        }
       }
+      console.log('Extraído subdominio del host:', subdomain);
+    }
+    
+    // Si aún no tenemos subdominio, usar 'demo' como último recurso
+    if (!subdomain) {
+      subdomain = 'demo';
+      console.log('Usando subdominio por defecto (demo)');
     }
     
     // Buscar el blog por subdominio y/o dominio

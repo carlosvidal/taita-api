@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import { PrismaClient } from "@prisma/client";
 import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcryptjs";
+import cors from "cors";
 import categoriesRouter from "./routes/categories.js";
 import categoriesPublicRouter from "./routes/categories-public.js";
 import postsRouter from "./routes/posts.js";
@@ -204,7 +205,17 @@ const app = express();
 const port = process.env.PORT || 3000;
 addDebugRoutes(app);
 
-// Configuración CORS dinámica que consulta la base de datos
+// Configuración mejorada de CORS
+const corsOptions = {
+  origin: ['*', 'https://taita.blog', 'https://demo.taita.blog', 'http://localhost:4321', 'http://localhost:5173'],
+  methods: ['GET', 'PUT', 'POST', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Taita-Subdomain', 'Accept', 'Origin', 'Referer', 'User-Agent'],
+  credentials: true
+};
+
+app.use(cors(corsOptions));
+
+// Middleware adicional para la detección de subdominio (mantenido para compatibilidad)
 const dynamicCorsMiddleware = async (req, res, next) => {
   const origin = req.headers.origin;
 
@@ -322,6 +333,146 @@ app.use(express.json());
 
 // Endpoint interno de verificación de emails
 app.use("/api/emails", emailsRouter);
+
+// Endpoint de diagnóstico para solucionar problemas
+app.get("/api/debug/tenant", async (req, res) => {
+  try {
+    // Extra todos los posibles identificadores de tenant
+    const host = req.headers.host || '';
+    const xTaitaSubdomain = req.headers['x-taita-subdomain'] || '';
+    const querySubdomain = req.query.subdomain || '';
+    const origin = req.headers.origin || '';
+    
+    // Leer todos los headers para depuración
+    const headers = {};
+    Object.keys(req.headers).forEach(key => {
+      headers[key] = req.headers[key];
+    });
+    
+    // Determinar subdomain efectivo
+    let subdomain = xTaitaSubdomain || querySubdomain || '';
+    if (!subdomain && host) {
+      subdomain = host.includes('.') ? host.split('.')[0] : (host.includes(':') ? 'demo' : host);
+    }
+    
+    // Buscar blog por subdomain
+    let blog = null;
+    if (subdomain) {
+      blog = await prisma.blog.findFirst({
+        where: { subdomain }
+      });
+    }
+    
+    // Obtener lista de blogs para diagnóstico
+    const allBlogs = await prisma.blog.findMany({
+      select: {
+        id: true,
+        uuid: true,
+        name: true,
+        subdomain: true,
+        domain: true,
+        _count: {
+          select: {
+            posts: {
+              where: { status: 'PUBLISHED' }
+            }
+          }
+        }
+      }
+    });
+    
+    // Devolver información de diagnóstico
+    res.json({
+      host,
+      headers,
+      queryParams: req.query,
+      detectedSubdomain: subdomain,
+      sources: {
+        xTaitaSubdomain,
+        querySubdomain,
+        fromHost: host.includes('.') ? host.split('.')[0] : ''
+      },
+      blog,
+      allBlogs: allBlogs.map(b => ({
+        ...b,
+        postsCount: b._count.posts
+      })),
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Error en endpoint de diagnóstico:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint de diagnóstico para posts
+app.get("/api/debug/posts", async (req, res) => {
+  try {
+    // Obtener subdomain de múltiples fuentes
+    const subdomain = req.headers['x-taita-subdomain'] || 
+                     req.query.subdomain || 
+                     'demo';
+    
+    console.log(`[DEBUG] Buscando posts para subdomain: ${subdomain}`);
+    
+    // Buscar blog
+    const blog = await prisma.blog.findFirst({
+      where: { subdomain }
+    });
+    
+    if (!blog) {
+      console.log(`[DEBUG] No se encontró blog con subdomain: ${subdomain}`);
+      return res.status(404).json({ 
+        error: "Blog no encontrado", 
+        subdomain,
+        availableBlogs: await prisma.blog.findMany({
+          select: { id: true, name: true, subdomain: true }
+        })
+      });
+    }
+    
+    console.log(`[DEBUG] Blog encontrado: ${blog.name} (ID: ${blog.id})`);
+    
+    // Buscar posts publicados
+    const posts = await prisma.post.findMany({
+      where: {
+        blogId: blog.id,
+        status: 'PUBLISHED'
+      },
+      include: {
+        category: true,
+        author: {
+          select: {
+            id: true,
+            name: true,
+            bio: true
+          }
+        }
+      },
+      orderBy: { publishedAt: "desc" }
+    });
+    
+    console.log(`[DEBUG] Encontrados ${posts.length} posts publicados`);
+    
+    return res.json({
+      success: true,
+      blogId: blog.id,
+      blogName: blog.name,
+      subdomain: blog.subdomain,
+      postsCount: posts.length,
+      posts: posts.map(p => ({
+        id: p.id,
+        uuid: p.uuid,
+        title: p.title,
+        slug: p.slug,
+        publishedAt: p.publishedAt
+      }))
+    });
+  } catch (error) {
+    console.error("Error en endpoint de diagnóstico de posts:", error);
+    return res.status(500).json({ error: error.message });
+  }
+});
 
 // --- Cap endpoints ---
 const cap = new Cap({
