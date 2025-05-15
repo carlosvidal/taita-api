@@ -75,6 +75,97 @@ router.get("/", authenticateUser, async (req, res) => {
   }
 });
 
+// Endpoint público para obtener posts
+router.get("/public", async (req, res) => {
+  try {
+    const host = req.headers.host || '';
+    const [subdomain, domain] = host.split('.');
+    
+    // Buscar el blog por subdominio
+    const blog = await prisma.blog.findFirst({
+      where: {
+        subdomain: subdomain
+      }
+    });
+    
+    if (!blog) {
+      return res.status(404).json({ error: "Blog not found" });
+    }
+    
+    const posts = await prisma.post.findMany({
+      where: {
+        blogId: blog.id,
+        status: 'PUBLISHED'
+      },
+      include: {
+        category: true,
+        author: {
+          select: {
+            id: true,
+            name: true,
+            bio: true,
+            avatar: true
+          }
+        }
+      },
+      orderBy: { publishedAt: "desc" }
+    });
+    
+    res.json(posts);
+  } catch (error) {
+    console.error('Error al obtener posts públicos:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint público para obtener post por slug
+router.get("/public/slug/:slug", async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const host = req.headers.host || '';
+    const [subdomain, domain] = host.split('.');
+    
+    // Buscar el blog por subdominio
+    const blog = await prisma.blog.findFirst({
+      where: {
+        subdomain: subdomain
+      }
+    });
+    
+    if (!blog) {
+      return res.status(404).json({ error: "Blog not found" });
+    }
+    
+    const posts = await prisma.post.findMany({
+      where: {
+        blogId: blog.id,
+        slug: slug,
+        status: 'PUBLISHED'
+      },
+      include: {
+        category: true,
+        author: {
+          select: {
+            id: true,
+            name: true,
+            bio: true,
+            avatar: true
+          }
+        }
+      }
+    });
+    
+    if (!posts || posts.length === 0) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+    
+    res.json(posts);
+  } catch (error) {
+    console.error('Error al obtener post por slug:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get post by ID
 router.get("/:id", authenticateUser, async (req, res) => {
   try {
