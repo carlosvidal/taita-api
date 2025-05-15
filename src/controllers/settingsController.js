@@ -2,6 +2,13 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 const getSettings = async (req, res) => {
+  // Verificar que el usuario tenga rol de ADMIN o SUPER_ADMIN
+  if (!req.user || (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN")) {
+    return res
+      .status(403)
+      .json({ error: "No autorizado. Se requiere rol de administrador o super administrador" });
+  }
+
   try {
     // Busca el primer blog (puedes personalizar el criterio si hay multi-tenant)
     const blog = await prisma.blog.findFirst();
@@ -31,11 +38,11 @@ const getSettings = async (req, res) => {
 };
 
 const updateSettings = async (req, res) => {
-  // Verificar que el usuario tenga rol de ADMIN
-  if (!req.user || req.user.role !== "ADMIN") {
+  // Verificar que el usuario tenga rol de ADMIN o SUPER_ADMIN
+  if (!req.user || (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN")) {
     return res
       .status(403)
-      .json({ error: "No autorizado. Se requiere rol de administrador" });
+      .json({ error: "No autorizado. Se requiere rol de administrador o super administrador" });
   }
 
   const {
