@@ -127,27 +127,25 @@ router.get('/', async (req, res) => {
     
     console.log('Blog encontrado para categorías:', blog.name, 'ID:', blog.id);
     
-    // Obtener las categorías del blog con conteo de posts
+    // Obtener las categorías del blog
     const categories = await prisma.category.findMany({
       where: { blogId: blog.id },
       include: {
-        _count: {
-          select: { posts: { where: { status: 'PUBLISHED' } } }
+        posts: {
+          where: { status: 'PUBLISHED' },
+          select: { id: true } // Solo necesitamos el ID para contar
         }
       }
     });
     
     // Formatear la respuesta para incluir el conteo de posts
-    // Transformar los resultados para incluir el conteo de posts
     const categoriesWithPostCount = categories.map(category => ({
-      ...category,
-      postCount: category._count.posts
+      id: category.id,
+      uuid: category.uuid,
+      name: category.name,
+      slug: category.slug,
+      postCount: category.posts.length // Contar los posts publicados
     }));
-    
-    // Eliminar el campo _count que ya no necesitamos
-    categoriesWithPostCount.forEach(category => {
-      delete category._count;
-    });
     
     console.log(`Encontradas ${categories.length} categorías para el blog ${blog.name}`);
     res.json(categoriesWithPostCount);
