@@ -83,22 +83,46 @@ async function main() {
   console.log({ blog });
 
   // 3. Crea o reutiliza categorías asociadas al blog
-  const categories = await Promise.all([
-    prisma.category.upsert({
-      where: { slug: "tecnologia" },
-      update: {},
-      create: { name: "Tecnología", slug: "tecnologia", blogId: blog.id }
-    }),
-    prisma.category.upsert({
-      where: { slug: "vida" },
-      update: {},
-      create: { name: "Vida", slug: "vida", blogId: blog.id }
-    }),
-    prisma.category.upsert({
-      where: { slug: "noticias" },
-      update: {},
-      create: { name: "Noticias", slug: "noticias", blogId: blog.id }
-    })
+  const categoryData = [
+    { name: "Tecnología", slug: "tecnologia" },
+    { name: "Vida", slug: "vida" },
+    { name: "Noticias", slug: "noticias" }
+  ];
+
+  const categories = [];
+  
+  for (const cat of categoryData) {
+    try {
+      // Verificar si la categoría ya existe para este blog
+      const existingCategory = await prisma.category.findFirst({
+        where: {
+          slug: cat.slug,
+          blogId: blog.id
+        }
+      });
+      
+      let category;
+      if (existingCategory) {
+        // Actualizar la categoría existente
+        category = await prisma.category.update({
+          where: { id: existingCategory.id },
+          data: { name: cat.name }
+        });
+      } else {
+        // Crear una nueva categoría
+        category = await prisma.category.create({
+          data: {
+            name: cat.name,
+            slug: cat.slug,
+            blogId: blog.id
+          }
+        });
+      }
+      categories.push(category);
+    } catch (error) {
+      console.error(`Error al procesar la categoría ${cat.name}:`, error);
+    }
+  }
   ]);
   console.log({ categories });
 
