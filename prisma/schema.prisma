@@ -135,11 +135,15 @@ model Post {
 model Category {
   blog      Blog     @relation(fields: [blogId], references: [id])
   blogId    Int
-  id    Int    @id @default(autoincrement())
-  uuid  String @default(uuid()) @unique
-  name  String @unique
-  slug  String @unique
-  posts Post[]
+  id        Int    @id @default(autoincrement())
+  uuid      String @default(uuid()) @unique
+  name      String
+  slug      String
+  posts     Post[]
+
+  // La combinación de name y blogId debe ser única
+  @@unique([name, blogId], name: "category_name_blog_id_unique")
+  @@unique([slug, blogId], name: "category_slug_blog_id_unique")
 }
 
 model Page {
