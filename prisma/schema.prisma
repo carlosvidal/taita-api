@@ -99,6 +99,7 @@ model Blog {
   comments  Comment[]
   series    Series[]
   media     Media[]
+  menuItems MenuItem[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -188,6 +189,10 @@ model MenuItem {
   parentId  Int?
   parent    MenuItem?  @relation("MenuItemToMenuItem", fields: [parentId], references: [id])
   children  MenuItem[] @relation("MenuItemToMenuItem")
+  
+  // Relación con Blog
+  blog      Blog     @relation(fields: [blogId], references: [id])
+  blogId    Int
 }
 
 model Media {

@@ -127,8 +127,9 @@ router.get('/', async (req, res) => {
     
     console.log('Blog encontrado para menú:', blog.name, 'ID:', blog.id);
     
-    // Obtener todos los ítems del menú
+    // Obtener todos los ítems del menú para este blog
     const allMenuItems = await prisma.menuItem.findMany({
+      where: { blogId: blog.id },
       orderBy: { order: 'asc' },
       include: {
         children: {
@@ -137,13 +138,13 @@ router.get('/', async (req, res) => {
       }
     });
     
-    // Filtrar solo los ítems de primer nivel (sin padre)
-    const rootItems = allMenuItems.filter(item => item.parentId === null);
+    console.log(`Encontrados ${allMenuItems.length} ítems de menú para el blog ${blog.name}`);
     
     // Construir la jerarquía de menús
     const buildMenuHierarchy = (items, parentId = null) => {
       return items
         .filter(item => item.parentId === parentId)
+        .sort((a, b) => a.order - b.order)
         .map(item => ({
           id: item.id,
           uuid: item.uuid,
@@ -155,6 +156,7 @@ router.get('/', async (req, res) => {
     };
     
     const menuItems = buildMenuHierarchy(allMenuItems);
+    console.log(`Menú construido con ${menuItems.length} ítems de primer nivel`);
     
     console.log(`Encontrados ${menuItems.length} items de menú para el blog ${blog.name}`);
     res.json(menuItems);
