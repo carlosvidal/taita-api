@@ -55,13 +55,62 @@ router.get('/:id', async (req, res) => {
 // Create category
 router.post('/', async (req, res) => {
   try {
-    const { name, slug } = req.body;
-    const category = await prisma.category.create({
-      data: { name, slug }
+    const { name, slug, blogId } = req.body;
+    
+    if (!blogId) {
+      return res.status(400).json({ error: "blogId es requerido" });
+    }
+    
+    // Verificar que el blog exista
+    const blog = await prisma.blog.findUnique({
+      where: { id: parseInt(blogId) }
     });
+    
+    if (!blog) {
+      return res.status(400).json({ error: "El blog especificado no existe" });
+    }
+    
+    // Verificar que no exista ya una categoría con el mismo nombre o slug en este blog
+    const existingCategory = await prisma.category.findFirst({
+      where: {
+        blogId: parseInt(blogId),
+        OR: [
+          { name },
+          { slug }
+        ]
+      }
+    });
+    
+    if (existingCategory) {
+      return res.status(400).json({ 
+        error: "Ya existe una categoría con este nombre o slug en este blog" 
+      });
+    }
+    
+    const category = await prisma.category.create({
+      data: { 
+        name, 
+        slug,
+        blog: { connect: { id: parseInt(blogId) } }
+      },
+      include: {
+        blog: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
+    });
+    
     res.json(category);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error("Error al crear categoría:", error);
+    res.status(400).json({ 
+      error: error.message,
+      code: error.code,
+      meta: error.meta
+    });
   }
 });
 
