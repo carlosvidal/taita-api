@@ -498,26 +498,28 @@ app.use("/uploads", express.static(uploadsPath));
 // Servir archivos estáticos desde la carpeta public
 app.use(express.static(path.join(__dirname, "../public")));
 
-// Rutas de la API
+// Rutas de la API (las rutas públicas deben ir antes que las protegidas)
 app.use("/api/posts/public", postsPublicRouter); // Ruta pública para posts (sin autenticación)
-app.use("/api/posts", postsRouter);
-app.use("/api/cms-posts", cmsPostsRouter); // Nueva ruta para posts del CMS
-app.use("/api/cms-pages", cmsPagesRouter); // Nueva ruta para pages del CMS
-app.use("/api/categories", categoriesRouter);
 app.use("/api/categories/public", categoriesPublicRouter); // Ruta pública para categorías (sin autenticación)
+app.use("/api/menu/public", menuPublicRouter); // Ruta pública para menú (sin autenticación)
+app.use("/api/settings/public", settingsPublicRouter); // Ruta pública para configuración (sin autenticación)
+
+// Rutas protegidas
+app.use("/api/posts", postsRouter);
+app.use("/api/cms-posts", cmsPostsRouter); // Ruta para posts del CMS
+app.use("/api/cms-pages", cmsPagesRouter); // Ruta para pages del CMS
+app.use("/api/categories", categoriesRouter);
 app.use("/api/blogs", blogsRouter);
 app.use("/api/pages", pagesRouter);
 app.use("/api/menu", menuRouter);
-app.use("/api/menu/public", menuPublicRouter); // Ruta pública para menú (sin autenticación)
-app.use("/api/series", seriesRouter); // Nueva ruta para series
+app.use("/api/series", seriesRouter); // Ruta para series
 app.use("/api/users", userProfileRouter);
-app.use("/api/profile-picture-test", profilePictureTestRouter); // Nueva ruta para imágenes de perfil
+app.use("/api/profile-picture-test", profilePictureTestRouter); // Ruta para imágenes de perfil
 app.use("/api/comments", commentsRouter);
 app.use("/api", statsRouter);
-app.use("/api/auth", authRouter); // Añadir rutas de autenticación
-app.use("/api/media", mediaRouter); // Añadir rutas de medios
-app.use("/api/settings", settingsRouter);
-app.use("/api/settings/public", settingsPublicRouter); // Ruta pública para configuración (sin autenticación) // Añadir rutas de configuraciones
+app.use("/api/auth", authRouter); // Rutas de autenticación
+app.use("/api/media", mediaRouter); // Rutas de medios
+app.use("/api/settings", settingsRouter); // Rutas de configuraciones
 
 // Importar y usar las nuevas rutas de suscripciones y pagos
 import subscriptionsRouter from "./routes/subscriptions.js";
