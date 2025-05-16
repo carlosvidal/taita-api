@@ -123,7 +123,7 @@ async function main() {
       console.error(`Error al procesar la categoría ${cat.name}:`, error);
     }
   }
-  ]);
+  
   console.log({ categories });
 
   // 4. Crea posts asociados al blog y categorías
