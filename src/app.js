@@ -150,22 +150,50 @@ async function fixDatabase() {
         console.log(`- Asignado plan "FREE" al blog ID ${blog.id}`);
       }
       
-      // Verificar si el blog tiene categorías
-      const categories = await prisma.category.findMany({
-        where: { blogId: blog.id }
-      });
+      // Verificar y crear categorías por defecto si no existen
+      const defaultCategories = [
+        { name: "Tecnología", slug: "tecnologia" },
+        { name: "Vida", slug: "vida" },
+        { name: "Noticias", slug: "noticias" }
+      ];
       
-      if (categories.length === 0) {
-        await prisma.category.createMany({
-          data: [
-            { name: "Tecnología", slug: "tecnologia", blogId: blog.id },
-            { name: "Vida", slug: "vida", blogId: blog.id },
-            { name: "Noticias", slug: "noticias", blogId: blog.id }
-          ]
-        });
-        console.log(`- Creadas categorías para el blog ID ${blog.id}`);
+      let createdCount = 0;
+      
+      for (const cat of defaultCategories) {
+        try {
+          // Verificar si la categoría ya existe para este blog
+          const existingCategory = await prisma.category.findFirst({
+            where: {
+              blogId: blog.id,
+              OR: [
+                { name: cat.name },
+                { slug: cat.slug }
+              ]
+            }
+          });
+          
+          if (!existingCategory) {
+            await prisma.category.create({
+              data: {
+                name: cat.name,
+                slug: cat.slug,
+                blogId: blog.id
+              }
+            });
+            createdCount++;
+          }
+        } catch (error) {
+          console.error(`- Error al crear la categoría ${cat.name}:`, error.message);
+        }
+      }
+      
+      if (createdCount > 0) {
+        console.log(`- Creadas ${createdCount} categorías para el blog ID ${blog.id}`);
       } else {
-        console.log(`- El blog ID ${blog.id} ya tiene ${categories.length} categorías`);
+        const totalCategories = await prisma.category.count({
+          where: { blogId: blog.id }
+        });
+        console.log(`- El blog ID ${blog.id} ya tiene ${totalCategories} categorías`);
       }
     }
 
@@ -192,13 +220,26 @@ async function fixDatabase() {
       console.log(`Nuevo blog creado con ID: ${newBlog.id} y UUID: ${newBlog.uuid}`);
       
       // Crear categorías para el nuevo blog
-      await prisma.category.createMany({
-        data: [
-          { name: "Tecnología", slug: "tecnologia", blogId: newBlog.id },
-          { name: "Vida", slug: "vida", blogId: newBlog.id },
-          { name: "Noticias", slug: "noticias", blogId: newBlog.id }
-        ]
-      });
+      const defaultCategories = [
+        { name: "Tecnología", slug: "tecnologia" },
+        { name: "Vida", slug: "vida" },
+        { name: "Noticias", slug: "noticias" }
+      ];
+      
+      for (const cat of defaultCategories) {
+        try {
+          await prisma.category.create({
+            data: {
+              name: cat.name,
+              slug: cat.slug,
+              blogId: newBlog.id
+            }
+          });
+          console.log(`- Categoría creada: ${cat.name}`);
+        } catch (error) {
+          console.error(`- Error al crear la categoría ${cat.name}:`, error.message);
+        }
+      }
       
       console.log('Categorías creadas para el nuevo blog');
     }
