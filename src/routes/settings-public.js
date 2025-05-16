@@ -127,24 +127,21 @@ router.get('/', async (req, res) => {
     
     console.log('Blog encontrado para configuración:', blog.name, 'ID:', blog.id);
     
-    // Obtener la configuración del blog
-    const settings = await prisma.setting.findMany({
-      where: { blogId: blog.id }
-    });
+    // Obtener los datos del blog como configuración
+    const { id, uuid, createdAt, updatedAt, adminId, ...blogSettings } = blog;
     
-    // Convertir los settings a un objeto
-    const settingsObject = {};
-    settings.forEach(setting => {
-      settingsObject[setting.key] = setting.value;
-    });
+    // Asegurarse de que los campos JSON se devuelvan como objetos
+    if (blogSettings.socialNetworks && typeof blogSettings.socialNetworks === 'string') {
+      try {
+        blogSettings.socialNetworks = JSON.parse(blogSettings.socialNetworks);
+      } catch (e) {
+        console.error('Error al parsear socialNetworks:', e);
+        blogSettings.socialNetworks = {};
+      }
+    }
     
-    // Añadir información básica del blog
-    settingsObject.blogName = blog.name;
-    settingsObject.blogSubdomain = blog.subdomain;
-    settingsObject.blogDomain = blog.domain;
-    
-    console.log(`Encontrados ${settings.length} ajustes para el blog ${blog.name}`);
-    res.json(settingsObject);
+    // Devolver los datos del blog como configuración
+    res.json(blogSettings);
   } catch (error) {
     console.error('Error al obtener configuración pública:', error);
     res.status(500).json({ error: error.message });

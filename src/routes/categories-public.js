@@ -127,20 +127,17 @@ router.get('/', async (req, res) => {
     
     console.log('Blog encontrado para categorías:', blog.name, 'ID:', blog.id);
     
-    // Obtener las categorías del blog
+    // Obtener las categorías del blog con conteo de posts
     const categories = await prisma.category.findMany({
       where: { blogId: blog.id },
-      include: { 
+      include: {
         _count: {
-          select: { 
-            posts: {
-              where: { status: 'PUBLISHED' }
-            }
-          }
+          select: { posts: { where: { status: 'PUBLISHED' } } }
         }
       }
     });
     
+    // Formatear la respuesta para incluir el conteo de posts
     // Transformar los resultados para incluir el conteo de posts
     const categoriesWithPostCount = categories.map(category => ({
       ...category,

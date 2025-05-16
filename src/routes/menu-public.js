@@ -127,10 +127,29 @@ router.get('/', async (req, res) => {
     
     console.log('Blog encontrado para menú:', blog.name, 'ID:', blog.id);
     
-    // Obtener el menú del blog
+    // Obtener los ítems del menú raíz (sin padre)
     const menuItems = await prisma.menuItem.findMany({
-      where: { blogId: blog.id },
-      orderBy: { order: 'asc' }
+      where: { 
+        blogId: blog.id,
+        parentId: null // Solo ítems de primer nivel
+      },
+      orderBy: { order: 'asc' },
+      include: {
+        children: {
+          orderBy: { order: 'asc' },
+          where: { 
+            parentId: { not: null } // Solo hijos directos
+          },
+          include: {
+            children: {
+              orderBy: { order: 'asc' },
+              where: { 
+                parentId: { not: null } // Solo nietos
+              }
+            }
+          }
+        }
+      }
     });
     
     console.log(`Encontrados ${menuItems.length} items de menú para el blog ${blog.name}`);
