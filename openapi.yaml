@@ -1,29 +1,713 @@
 openapi: 3.1.0
 info:
-  title: Astro Blog API
-  description: API for managing blog posts and user interactions
+  title: Taita API
+  description: API for Taita CMS and Frontend
   version: 1.0.0
+  contact:
+    name: Taita Support
+    email: support@taita.app
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
 servers:
   - url: http://localhost:3000/api
     description: Development server
+  - url: https://api.taita.app/api
+    description: Production server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        uuid:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          type: string
+          enum: [SUPER_ADMIN, ADMIN, EDITOR, VIEWER]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    
+    Post:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        uuid:
+          type: string
+        title:
+          type: string
+        slug:
+          type: string
+        content:
+          type: string
+        excerpt:
+          type: string
+        status:
+          type: string
+          enum: [draft, published, archived]
+        featuredImage:
+          type: string
+          format: uri
+          nullable: true
+        authorId:
+          type: string
+          format: uuid
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        blogId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        author:
+          $ref: '#/components/schemas/User'
+        category:
+          $ref: '#/components/schemas/Category'
+    
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        uuid:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+          nullable: true
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        blogId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    
+    Media:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+        filename:
+          type: string
+        mimeType:
+          type: string
+        size:
+          type: integer
+        uploaderId:
+          type: string
+          format: uuid
+        blogId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    
+    Page:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        slug:
+          type: string
+        content:
+          type: string
+        status:
+          type: string
+          enum: [draft, published]
+        isHomepage:
+          type: boolean
+        authorId:
+          type: string
+          format: uuid
+        blogId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    
+    Menu:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        location:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MenuItem'
+        blogId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    
+    MenuItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        url:
+          type: string
+        target:
+          type: string
+          enum: [_self, _blank]
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        order:
+          type: integer
+    
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        authorName:
+          type: string
+        authorEmail:
+          type: string
+          format: email
+        status:
+          type: string
+          enum: [pending, approved, spam, trash]
+        postId:
+          type: string
+          format: uuid
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        userId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    
+    Subscription:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        blogId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: float
+        currency:
+          type: string
+          default: 'USD'
+        status:
+          type: string
+          enum: [pending, completed, failed, refunded]
+        paymentMethod:
+          type: string
+        paymentId:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        blogId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    
+    Stats:
+      type: object
+      properties:
+        totalPosts:
+          type: integer
+        totalPages:
+          type: integer
+        totalCategories:
+          type: integer
+        totalMedia:
+          type: integer
+        totalUsers:
+          type: integer
+        totalSubscribers:
+          type: integer
+    
+    Error:
+      type: object
+      description: Standard error response object
+      properties:
+        statusCode:
+          type: integer
+          format: int32
+          description: HTTP status code
+          example: 400
+        error:
+          type: string
+          description: Error type or category
+          example: "Bad Request"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Invalid input parameters"
+        details:
+          type: object
+          description: Additional error details or validation errors
+          additionalProperties: true
+
+  responses:
+    Unauthorized:
+      description: Unauthorized - Authentication credentials were missing or incorrect
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Forbidden - User doesn't have permission to access this resource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: The specified resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    BadRequest:
+      description: Bad Request - The request was invalid or cannot be served
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Conflict - The request could not be completed due to a conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ServerError:
+      description: Internal Server Error - An unexpected error occurred on the server
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
 
 paths:
-  /posts:
-    get:
-      summary: Get all blog posts
+  # Authentication
+  /auth/request-otp:
+    post:
+      tags: [Auth]
+      summary: Request OTP for login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
       responses:
         '200':
-          description: List of blog posts
+          description: OTP sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "OTP sent to email"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          description: Internal server error
+
+  /auth/verify-otp:
+    post:
+      tags: [Auth]
+      summary: Verify OTP and login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, otp]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                otp:
+                  type: string
+                  example: "123456"
+      responses:
+        '200':
+          description: OTP verified, returns token and user data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: Internal server error
+
+  /auth/signup:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name:
+                  type: string
+                  example: "John Doe"
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: "securePassword123"
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: User with this email already exists
+        '500':
+          description: Internal server error
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: User login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                password:
+                  type: string
+                  format: password
+                  example: "securePassword123"
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: Internal server error
+
+  # Users
+  /users:
+    get:
+      tags: [Users]
+      summary: List all users (Admin only)
+      description: Retrieve a list of all users. Requires admin privileges.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Page number for pagination
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+          description: Number of items per page
+        - in: query
+          name: role
+          schema:
+            type: string
+            enum: [SUPER_ADMIN, ADMIN, EDITOR, VIEWER]
+          description: Filter users by role
+      responses:
+        '200':
+          description: A paginated list of users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      totalPages:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    post:
+      tags: [Users]
+      summary: Create a new user (Admin only)
+      description: Create a new user. Requires admin privileges.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, role]
+              properties:
+                name:
+                  type: string
+                  example: "Jane Smith"
+                email:
+                  type: string
+                  format: email
+                  example: "jane@example.com"
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: "securePassword123"
+                role:
+                  type: string
+                  enum: [SUPER_ADMIN, ADMIN, EDITOR, VIEWER]
+                  example: "EDITOR"
+                avatar:
+                  type: string
+                  format: uri
+                  example: "https://example.com/avatar.jpg"
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /users/{id}:
+    get:
+      tags: [Users]
+      summary: Get user by ID
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+          $ref: '#/components/responses/NotFound'
+
+  /posts:
+    get:
+      tags: [Posts]
+      summary: List all posts
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, published, archived]
+        - name: author
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: A list of posts
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: '#/components/schemas/Post'
+    
     post:
-      summary: Create a new blog post
+      tags: [Posts]
+      summary: Create a new post
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -32,12 +716,84 @@ paths:
               $ref: '#/components/schemas/Post'
       responses:
         '201':
-          description: Post created successfully
+          description: Post created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
 
-  /media/upload:
+  /posts/{id}:
+    get:
+      tags: [Posts]
+      summary: Get post by ID or slug
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Post found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        '404':
+          description: Post not found
+          $ref: '#/components/responses/NotFound'
+    
+    put:
+      tags: [Posts]
+      summary: Update a post
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Post'
+      responses:
+        '200':
+          description: Post updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+    
+    delete:
+      tags: [Posts]
+      summary: Delete a post
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Post deleted
+        '404':
+          description: Post not found
+          $ref: '#/components/responses/NotFound'
+
+  /upload:
     post:
-      summary: Subir imágenes
       tags: [Media]
+      summary: Upload a file
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -45,652 +801,24 @@ paths:
             schema:
               type: object
               properties:
-                image:
+                file:
                   type: string
                   format: binary
       responses:
         '201':
-          description: Imágenes subidas y convertidas exitosamente
-        '400':
-          description: No se proporcionó ninguna imagen
-        '500':
-          description: Error al procesar la imagen
-
-  /posts/{id}:
-    get:
-      summary: Get a specific blog post
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Blog post details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Post'
-
-  /settings:
-    get:
-      summary: Obtener configuraciones del blog
-      responses:
-        '200':
-          description: Configuraciones del blog
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BlogSettings'
-        '500':
-          description: Error al obtener configuraciones
-    put:
-      summary: Actualizar configuraciones del blog
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BlogSettings'
-      responses:
-        '200':
-          description: Configuraciones actualizadas
-        '400':
-          description: Plantilla no válida
-        '500':
-          description: Error al actualizar configuraciones
-
-  /series:
-    get:
-      summary: Obtener todas las series
-      responses:
-        '200':
-          description: Lista de series
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Series'
-        '500':
-          description: Error al obtener series
-    post:
-      summary: Crear una nueva serie
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Series'
-      responses:
-        '200':
-          description: Serie creada exitosamente
-        '400':
-          description: Error en los datos proporcionados
-        '500':
-          description: Error al crear la serie
-          
-  /series/uuid/{uuid}:
-    get:
-      summary: Obtener una serie por UUID
-      parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Detalles de la serie
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Series'
-        '404':
-          description: Serie no encontrada
-        '500':
-          description: Error al obtener la serie
-    put:
-      summary: Actualizar una serie
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Series'
-      responses:
-        '200':
-          description: Serie actualizada exitosamente
-        '400':
-          description: Error en los datos proporcionados
-        '404':
-          description: Serie no encontrada
-        '500':
-          description: Error al actualizar la serie
-    delete:
-      summary: Eliminar una serie
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Serie eliminada exitosamente
-        '404':
-          description: Serie no encontrada
-        '500':
-          description: Error al eliminar la serie
-          
-  /series/uuid/{uuid}/posts:
-    post:
-
-  /payments/notifications:
-    post:
-      summary: Handle payment notifications
-      tags: [Payments]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PaymentNotification'
-      responses:
-        '200':
-          description: Notification received successfully
-        '400':
-          description: Invalid notification format
-        '500':
-          description: Error processing notification
-
-  /subscriptions:
-    post:
-      summary: Create a new subscription
-      tags: [Subscriptions]
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SubscriptionPlan'
-      responses:
-        '201':
-          description: Subscription created successfully
-        '400':
-          description: Invalid subscription data
-        '500':
-          description: Error creating subscription
-
-  /subscriptions/{id}:
-    get:
-      summary: Get subscription details
-      tags: [Subscriptions]
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Subscription details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubscriptionPlan'
-        '404':
-          description: Subscription not found
-        '500':
-          description: Error getting subscription
-
-    put:
-      summary: Update subscription plan
-      tags: [Subscriptions]
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SubscriptionPlan'
-      responses:
-        '200':
-          description: Subscription updated successfully
-        '400':
-          description: Invalid subscription data
-        '404':
-          description: Subscription not found
-        '500':
-          description: Error updating subscription
-
-  /subscriptions/{id}/upgrade:
-    post:
-      summary: Upgrade user subscription plan
-      tags: [Subscriptions]
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                plan:
-                  type: string
-                  enum: [FREE, PRO]
-                interval:
-                  type: string
-                  enum: [monthly, yearly]
-      responses:
-        '200':
-          description: Subscription upgraded successfully
-        '400':
-          description: Invalid upgrade data
-        '404':
-          description: Subscription not found
-        '500':
-          description: Error upgrading subscription
-
-  /subscriptions/{id}/cancel:
-    post:
-      summary: Cancel user subscription
-      tags: [Subscriptions]
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Subscription cancelled successfully
-        '404':
-          description: Subscription not found
-        '500':
-          description: Error cancelling subscription
-
-  /subscriptions/{id}/status:
-    get:
-      summary: Get subscription status
-      tags: [Subscriptions]
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Subscription status
+          description: File uploaded successfully
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  status:
+                  url:
                     type: string
-                    enum: [ACTIVE, CANCELED, PENDING]
-                  next_payment_date:
+                    format: uri
+                  filename:
                     type: string
-                    format: date-time
-        '404':
-          description: Subscription not found
-        '500':
-          description: Error getting subscription status
+                  size:
+                    type: integer
+                    format: int64
 
-  /subscriptions/status:
-    get:
-      summary: Obtener estado de suscripción del usuario actual
-      tags: [Subscriptions]
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Estado de la suscripción del usuario
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    enum: [ACTIVE, CANCELED, PENDING, NONE]
-                  plan:
-                    type: string
-                    enum: [FREE, PRO]
-                  next_payment_date:
-                    type: string
-                    format: date-time
-                  subscription_id:
-                    type: string
-        '401':
-          description: Usuario no autenticado
-        '500':
-          description: Error al obtener el estado de la suscripción
-          
-  /subscriptions/create-preference:
-    post:
-      summary: Create MercadoPago payment preference
-      tags: [Subscriptions]
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                plan:
-                  type: string
-                  enum: [FREE, PRO]
-                interval:
-                  type: string
-                  enum: [monthly, yearly]
-      responses:
-        '200':
-          description: Payment preference created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  preference_id:
-                    type: string
-                  init_point:
-                    type: string
-        '400':
-          description: Invalid request data
-        '500':
-          description: Error creating payment preference
-      summary: Añadir un post a una serie
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                postId:
-                  type: integer
-                sequenceNumber:
-                  type: integer
-      responses:
-        '200':
-          description: Post añadido a la serie exitosamente
-        '400':
-          description: Error en los datos proporcionados
-        '404':
-          description: Serie o post no encontrado
-        '500':
-          description: Error al añadir el post a la serie
-          
-  /profile:
-    put:
-      summary: Actualizar perfil de usuario
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Profile'
-      responses:
-        '200':
-          description: Perfil actualizado
-        '401':
-          description: Contraseña actual incorrecta
-        '404':
-          description: Usuario no encontrado
-        '500':
-          description: Error al actualizar el perfil
 
-components:
-  schemas:
-    PaymentNotification:
-      type: object
-      properties:
-        id:
-          type: string
-        amount:
-          type: number
-        currency:
-          type: string
-        status:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-    SubscriptionPlan:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        price:
-          type: number
-        currency:
-          type: string
-        interval:
-          type: string
-          enum: [monthly, yearly]
-        features:
-          type: array
-          items:
-            type: string
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      
-  schemas:
-    Post:
-      type: object
-      properties:
-        id:
-          type: string
-        uuid:
-          type: string
-        title:
-          type: string
-        content:
-          type: string
-        excerpt:
-          type: string
-        slug:
-          type: string
-        image:
-          type: string
-        status:
-          type: string
-          enum: [DRAFT, PUBLISHED]
-        author:
-          $ref: '#/components/schemas/Admin'
-        category:
-          $ref: '#/components/schemas/Category'
-        series:
-          $ref: '#/components/schemas/Series'
-        sequenceNumber:
-          type: integer
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-
-    BlogSettings:
-      type: object
-      properties:
-        id:
-          type: integer
-        title:
-          type: string
-          description: Título principal del blog
-        description:
-          type: string
-          description: Descripción breve del blog
-        language:
-          type: string
-          enum: [es, en]
-        template:
-          type: string
-          enum: [default, minimal, professional]
-        domain:
-          type: string
-        googleAnalyticsId:
-          type: string
-        socialNetworks:
-          type: object
-          properties:
-            facebook:
-              type: string
-            instagram:
-              type: string
-            x:
-              type: string
-            linkedin:
-              type: string
-            youtube:
-              type: string
-            github:
-              type: string
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-
-    Series:
-      type: object
-      properties:
-        id:
-          type: integer
-        uuid:
-          type: string
-        title:
-          type: string
-        slug:
-          type: string
-        description:
-          type: string
-        coverImage:
-          type: string
-        author:
-          $ref: '#/components/schemas/Admin'
-        posts:
-          type: array
-          items:
-            type: object
-            properties:
-              id:
-                type: integer
-              uuid:
-                type: string
-              title:
-                type: string
-              slug:
-                type: string
-              sequenceNumber:
-                type: integer
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-          
-    Admin:
-      type: object
-      properties:
-        id:
-          type: integer
-        uuid:
-          type: string
-        name:
-          type: string
-        email:
-          type: string
-        bio:
-          type: string
-        picture:
-          type: string
-        role:
-          type: string
-          enum: [ADMIN, AUTHOR]
-          
-    Category:
-      type: object
-      properties:
-        id:
-          type: integer
-        uuid:
-          type: string
-        name:
-          type: string
-        slug:
-          type: string
-          
-    Profile:
-      type: object
-      properties:
-        id:
-          type: integer
-        bio:
-          type: string
-        picture:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
