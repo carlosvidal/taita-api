@@ -282,7 +282,15 @@ addDebugRoutes(app);
 
 // Configuración mejorada de CORS
 const corsOptions = {
-  origin: ['*', 'https://taita.blog', 'https://demo.taita.blog', 'http://localhost:4321', 'http://localhost:5173'],
+  origin: [
+    '*',
+    'https://taita.blog',
+    'https://www.taita.blog',
+    'https://demo.taita.blog',
+    'http://localhost:4321',
+    'http://localhost:5173',
+    'http://localhost:3000'
+  ],
   methods: ['GET', 'PUT', 'POST', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Taita-Subdomain', 'Accept', 'Origin', 'Referer', 'User-Agent'],
   credentials: true
@@ -320,11 +328,22 @@ const dynamicCorsMiddleware = async (req, res, next) => {
   const isTaitaSubdomain = (origin) => {
     try {
       const hostname = new URL(origin).hostname;
-      return hostname.endsWith('.taita.blog') || hostname === 'taita.blog';
+      return (
+        hostname.endsWith('.taita.blog') || 
+        hostname === 'taita.blog' || 
+        hostname === 'www.taita.blog'
+      );
     } catch (error) {
+      console.error('Error al verificar el subdominio:', error);
       return false;
     }
   };
+
+  // Debug: Mostrar información del origen
+  console.log('Origen de la solicitud:', origin);
+  console.log('Es subdominio de taita.blog:', isTaitaSubdomain(origin));
+  console.log('Está en lista de desarrollo:', devOrigins.includes(origin));
+  console.log('Está en lista de dominios principales:', mainDomains.includes(origin));
 
   // Si no hay origen o es un entorno de desarrollo, permitir
   if (!origin || devOrigins.includes(origin)) {
