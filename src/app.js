@@ -326,37 +326,75 @@ const dynamicCorsMiddleware = async (req, res, next) => {
   
   // Función para verificar si un origen es un subdominio de taita.blog
   const isTaitaSubdomain = (origin) => {
+    if (!origin) {
+      console.log('Origin is undefined or empty');
+      return false;
+    }
+    
     try {
-      const hostname = new URL(origin).hostname;
-      return (
+      // Si el origen no comienza con http:// o https://, añadirlo temporalmente
+      const urlToCheck = origin.startsWith('http') ? origin : `https://${origin}`;
+      const hostname = new URL(urlToCheck).hostname;
+      
+      // Verificar si es un subdominio de taita.blog
+      const isValid = (
         hostname.endsWith('.taita.blog') || 
         hostname === 'taita.blog' || 
-        hostname === 'www.taita.blog'
+        hostname === 'www.taita.blog' ||
+        hostname === 'localhost' // Para desarrollo local
       );
+      
+      console.log(`Verificando subdominio para ${hostname}: ${isValid}`);
+      return isValid;
     } catch (error) {
-      console.error('Error al verificar el subdominio:', error);
+      console.error('Error al verificar el subdominio:', error.message);
+      console.error('Origin que causó el error:', origin);
       return false;
     }
   };
 
   // Debug: Mostrar información del origen
+  console.log('=== Información de la solicitud ===');
+  console.log('Método:', req.method);
+  console.log('URL:', req.originalUrl);
   console.log('Origen de la solicitud:', origin);
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  
+  // Verificar si el origen está permitido
+  const isAllowedOrigin = (
+    !origin || // Permitir solicitudes sin origen (como desde Postman)
+    isTaitaSubdomain(origin) ||
+    devOrigins.includes(origin) ||
+    mainDomains.includes(origin)
+  );
+  
   console.log('Es subdominio de taita.blog:', isTaitaSubdomain(origin));
   console.log('Está en lista de desarrollo:', devOrigins.includes(origin));
   console.log('Está en lista de dominios principales:', mainDomains.includes(origin));
+  console.log('Origen permitido:', isAllowedOrigin);
+  console.log('==================================');
 
-  // Si no hay origen o es un entorno de desarrollo, permitir
-  if (!origin || devOrigins.includes(origin)) {
-    res.header("Access-Control-Allow-Origin", origin || "*");
+  // Si el origen está permitido, configurar los headers CORS
+  if (isAllowedOrigin) {
+    // Si no hay origen (como en solicitudes desde Postman), usar '*'
+    // De lo contrario, usar el origen específico para soportar credenciales
+    const allowOrigin = origin || '*';
+    
+    console.log(`Configurando CORS para origen: ${allowOrigin}`);
+    
+    res.header("Access-Control-Allow-Origin", allowOrigin);
     res.header(
       "Access-Control-Allow-Methods",
       "GET, PUT, POST, DELETE, PATCH, OPTIONS"
     );
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
     res.header("Access-Control-Allow-Credentials", "true");
+    res.header("Access-Control-Max-Age", "3600");
 
+    // Manejar solicitudes preflight
     if (req.method === "OPTIONS") {
-      return res.sendStatus(200);
+      console.log('Manejando solicitud OPTIONS (preflight)');
+      return res.status(200).end();
     }
 
     return next();
