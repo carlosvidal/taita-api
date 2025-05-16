@@ -87,11 +87,45 @@ async function fixDatabase() {
       
       // Verificar si el blog está asociado a un admin
       if (!blog.adminId) {
-        await prisma.blog.update({
-          where: { id: blog.id },
-          data: { adminId: admin.id }
-        });
-        console.log(`- Asociado blog ID ${blog.id} al admin ID ${admin.id}`);
+        try {
+          await prisma.blog.update({
+            where: { id: blog.id },
+            data: { adminId: admin.id }
+          });
+          console.log(`- Asociado blog ID ${blog.id} al admin ID ${admin.id}`);
+        } catch (error) {
+          if (error.code === 'P2002') {
+            // Si hay un error de restricción única, verificar si ya existe un blog con este admin
+            const existingBlog = await prisma.blog.findFirst({
+              where: { adminId: admin.id }
+            });
+            
+            if (existingBlog) {
+              console.log(`- El admin ID ${admin.id} ya está asociado al blog ID ${existingBlog.id}. No se puede asociar al blog ID ${blog.id}`);
+              
+              // Si el blog actual no tiene admin, crear un nuevo admin para él
+              const newAdmin = await prisma.admin.create({
+                data: {
+                  uuid: uuidv4(),
+                  email: `admin-blog${blog.id}@example.com`,
+                  password: await bcrypt.hash(`blog${blog.id}password`, 10),
+                  name: `Admin Blog ${blog.id}`,
+                  role: 'ADMIN'
+                }
+              });
+              
+              // Asociar el blog al nuevo admin
+              await prisma.blog.update({
+                where: { id: blog.id },
+                data: { adminId: newAdmin.id }
+              });
+              
+              console.log(`- Creado nuevo admin ID ${newAdmin.id} para el blog ID ${blog.id}`);
+            }
+          } else {
+            console.error(`- Error al actualizar el blog ID ${blog.id}:`, error);
+          }
+        }
       }
       
       // Verificar si el blog tiene subdominio
