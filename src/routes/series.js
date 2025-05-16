@@ -182,15 +182,43 @@ router.get("/:id", async (req, res) => {
 // Create series
 router.post("/", async (req, res) => {
   try {
-    const { title, description, slug, authorId, coverImage } = req.body;
+    const { title, description, slug, authorId, coverImage, blogId } = req.body;
     console.log("Creando nueva serie:", req.body);
+    
+    if (!blogId) {
+      return res.status(400).json({ error: "blogId es requerido" });
+    }
+    
+    // Verificar que el blog exista
+    const blog = await prisma.blog.findUnique({
+      where: { id: parseInt(blogId) }
+    });
+    
+    if (!blog) {
+      return res.status(400).json({ error: "El blog especificado no existe" });
+    }
+    
+    // Verificar que el usuario sea el administrador del blog
+    if (blog.adminId !== parseInt(authorId)) {
+      const blogUser = await prisma.blogUser.findFirst({
+        where: {
+          userId: parseInt(authorId),
+          blogId: parseInt(blogId)
+        }
+      });
+      
+      if (!blogUser) {
+        return res.status(403).json({ error: "No tienes permiso para crear series en este blog" });
+      }
+    }
     
     // Preparar los datos para la creación
     const seriesData = {
       title,
       description: description || "",
       slug,
-      author: { connect: { id: parseInt(authorId) } }
+      author: { connect: { id: parseInt(authorId) } },
+      blog: { connect: { id: parseInt(blogId) } }
     };
     
     // Manejar la imagen de portada si se proporciona
