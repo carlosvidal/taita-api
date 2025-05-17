@@ -376,20 +376,26 @@ const dynamicCorsMiddleware = async (req, res, next) => {
 
   // Si el origen está permitido, configurar los headers CORS
   if (isAllowedOrigin) {
-    // Si no hay origen (como en solicitudes desde Postman), usar '*'
-    // De lo contrario, usar el origen específico para soportar credenciales
-    const allowOrigin = origin || '*';
+    // No usar '*' cuando se usan credenciales
+    // Usar el origen específico o el primer origen permitido
+    const allowOrigin = origin || mainDomains[0] || 'http://localhost:5173';
     
     console.log(`Configurando CORS para origen: ${allowOrigin}`);
     
+    // Configuración de CORS para credenciales
     res.header("Access-Control-Allow-Origin", allowOrigin);
     res.header(
       "Access-Control-Allow-Methods",
       "GET, PUT, POST, DELETE, PATCH, OPTIONS"
     );
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-XSRF-TOKEN");
     res.header("Access-Control-Allow-Credentials", "true");
     res.header("Access-Control-Max-Age", "3600");
+    
+    // Para solicitudes con credenciales, asegurarse de que el origen coincida exactamente
+    if (req.headers.origin) {
+      res.header("Vary", "Origin");
+    }
 
     // Manejar solicitudes preflight
     if (req.method === "OPTIONS") {
