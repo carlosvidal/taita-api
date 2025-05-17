@@ -388,13 +388,18 @@ const dynamicCorsMiddleware = async (req, res, next) => {
       "Access-Control-Allow-Methods",
       "GET, PUT, POST, DELETE, PATCH, OPTIONS"
     );
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-XSRF-TOKEN");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-XSRF-TOKEN, Accept, Origin");
     res.header("Access-Control-Allow-Credentials", "true");
     res.header("Access-Control-Max-Age", "3600");
     
     // Para solicitudes con credenciales, asegurarse de que el origen coincida exactamente
     if (req.headers.origin) {
       res.header("Vary", "Origin");
+    }
+    
+    // Si es una solicitud OPTIONS (preflight), enviar respuesta inmediata
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
     }
 
     // Manejar solicitudes preflight

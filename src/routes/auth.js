@@ -1,54 +1,30 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-import { requestOtp, verifyOtp, signup } from '../controllers/authController.js';
 const router = express.Router();
 const prisma = new PrismaClient();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 
-// Registro con OTP
-router.post('/request-otp', requestOtp);
-router.post('/verify-otp', verifyOtp);
-router.post('/signup', signup);
-
-import bcrypt from "bcryptjs";
 // Ruta de login
 router.post('/login', async (req, res) => {
   try {
-    console.log('=== SOLICITUD DE LOGIN RECIBIDA ===');
-    console.log('Headers:', req.headers);
-    console.log('Body recibido:', req.body);
-    
     const { email, password } = req.body;
-    
-    if (!email || !password) {
-      console.log('Error: Faltan credenciales');
-      return res.status(400).json({
-        success: false,
-        error: 'Email y contraseña son requeridos'
-      });
-    }
-    
     console.log('Intentando login para:', email);
     
     // Buscar el usuario en la base de datos
     const user = await prisma.admin.findUnique({
       where: { email }
     });
-    
-    console.log('Usuario encontrado:', user ? { 
-      id: user.id, 
-      email: user.email,
-      hasPassword: !!user.password 
-    } : 'No encontrado');
-    
+    console.log('Usuario encontrado:', user ? { id: user.id, email: user.email, password: user.password } : null);
     let passwordMatch = false;
-    if (user && user.password) {
+    if (user) {
       passwordMatch = await bcrypt.compare(password, user.password);
       console.log('Resultado bcrypt.compare:', passwordMatch);
     }
+    
     // Verificar si el usuario existe y la contraseña es correcta (bcrypt)
     if (user && passwordMatch) {
       // Generar un JWT
@@ -74,6 +50,13 @@ router.post('/login', async (req, res) => {
       success: false,
       error: 'Credenciales inválidas'
     });
+  } catch (error) {
+    console.error('Login error:', error);
+    return res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor durante el login'
+      });
+    }
   } catch (error) {
     console.error('Login error:', error);
     return res.status(500).json({
