@@ -53,15 +53,8 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     return res.status(500).json({
-        success: false,
-        error: 'Error interno del servidor durante el login'
-      });
-    }
-  } catch (error) {
-    console.error('Login error:', error);
-    return res.status(500).json({
       success: false,
-      error: 'Error en el servidor'
+      error: 'Error en el servidor durante el proceso de autenticación'
     });
   }
 });
