@@ -635,6 +635,41 @@ app.use("/uploads", express.static(uploadsPath));
 // Servir archivos estáticos desde la carpeta public
 app.use(express.static(path.join(__dirname, "../public")));
 
+// Rutas de autenticación (deben ir antes del middleware de autenticación)
+app.use("/api/auth", authRouter); // Rutas de autenticación
+
+// Importar el middleware de autenticación
+import authenticateToken from "./middleware/authenticateToken.js";
+
+// Middleware para verificar autenticación en rutas protegidas
+const requireAuth = (req, res, next) => {
+  // Lista de rutas que no requieren autenticación
+  const publicPaths = [
+    '/api/auth',
+    '/api/posts/public',
+    '/api/categories/public',
+    '/api/menu/public',
+    '/api/settings/public',
+    '/uploads',
+    '/api/password',
+    '/api/auth/login'  // Asegurarse de que la ruta de login esté en la lista de rutas públicas
+  ];
+
+  // Verificar si la ruta actual está en la lista de rutas públicas
+  const isPublicPath = publicPaths.some(path => req.path.startsWith(path));
+  
+  if (isPublicPath) {
+    console.log(`Ruta pública detectada: ${req.path}`);
+    return next();
+  }
+
+  console.log(`Verificando autenticación para ruta: ${req.path}`);
+  return authenticateToken(req, res, next);
+};
+
+// Aplicar el middleware de autenticación a todas las rutas
+app.use(requireAuth);
+
 // Rutas de la API (las rutas públicas deben ir antes que las protegidas)
 app.use("/api/posts/public", postsPublicRouter); // Ruta pública para posts (sin autenticación)
 app.use("/api/categories/public", categoriesPublicRouter); // Ruta pública para categorías (sin autenticación)
@@ -654,7 +689,6 @@ app.use("/api/users", userProfileRouter);
 app.use("/api/profile-picture-test", profilePictureTestRouter); // Ruta para imágenes de perfil
 app.use("/api/comments", commentsRouter);
 app.use("/api", statsRouter);
-app.use("/api/auth", authRouter); // Rutas de autenticación
 app.use("/api/media", mediaRouter); // Rutas de medios
 app.use("/api/settings", settingsRouter); // Rutas de configuraciones
 
