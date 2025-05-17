@@ -64,27 +64,55 @@ const authenticateUser = async (req, res, next) => {
   try {
     // Obtener el token del encabezado de autorización
     const authHeader = req.headers.authorization;
-    console.log("Headers recibidos:", req.headers);
-    console.log("Authorization:", req.headers.authorization);
-
+    
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res
-        .status(401)
-        .json({ error: "No autorizado. Token no proporcionado" });
+      console.log('No se proporcionó token de autenticación');
+      return res.status(401).json({ 
+        success: false,
+        error: "No autorizado. Token no proporcionado" 
+      });
     }
 
     const token = authHeader.split(" ")[1];
+    
+    if (!token) {
+      console.log('Formato de token inválido');
+      return res.status(401).json({ 
+        success: false,
+        error: "Formato de token inválido. Use: Bearer <token>" 
+      });
+    }
 
-    // Verificamos el JWT
     try {
+      // Verificar el token JWT
       const decoded = jwt.verify(token, process.env.JWT_SECRET || "supersecretkey");
+      
+      if (!decoded || !decoded.id) {
+        console.log('Token JWT inválido: falta el ID de usuario');
+        return res.status(401).json({ 
+          success: false,
+          error: "Token JWT inválido" 
+        });
+      }
+      
       // Buscar el usuario en la base de datos usando el id del payload
       const user = await prisma.admin.findUnique({
         where: { id: decoded.id },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          uuid: true
+        }
       });
 
       if (!user) {
-        return res.status(401).json({ error: "Usuario no encontrado" });
+        console.log(`Usuario no encontrado para el ID: ${decoded.id}`);
+        return res.status(401).json({ 
+          success: false,
+          error: "Usuario no encontrado" 
+        });
       }
 
       // Añadir el usuario a la solicitud para uso posterior
@@ -92,11 +120,25 @@ const authenticateUser = async (req, res, next) => {
       next();
     } catch (error) {
       console.error("Error al verificar token JWT:", error);
-      return res.status(401).json({ error: "Token JWT inválido" });
+      
+      let errorMessage = "Token inválido o expirado";
+      if (error.name === 'TokenExpiredError') {
+        errorMessage = "La sesión ha expirado. Por favor, inicia sesión nuevamente.";
+      } else if (error.name === 'JsonWebTokenError') {
+        errorMessage = "Token inválido";
+      }
+      
+      return res.status(401).json({ 
+        success: false,
+        error: errorMessage 
+      });
     }
   } catch (error) {
     console.error("Error en autenticación:", error);
-    return res.status(500).json({ error: "Error en el servidor" });
+    return res.status(500).json({ 
+      success: false,
+      error: "Error en el servidor durante la autenticación" 
+    });
   }
 };
 
