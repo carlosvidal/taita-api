@@ -17,15 +17,35 @@ import bcrypt from "bcryptjs";
 // Ruta de login
 router.post('/login', async (req, res) => {
   try {
+    console.log('=== SOLICITUD DE LOGIN RECIBIDA ===');
+    console.log('Headers:', req.headers);
+    console.log('Body recibido:', req.body);
+    
     const { email, password } = req.body;
+    
+    if (!email || !password) {
+      console.log('Error: Faltan credenciales');
+      return res.status(400).json({
+        success: false,
+        error: 'Email y contraseña son requeridos'
+      });
+    }
+    
     console.log('Intentando login para:', email);
+    
     // Buscar el usuario en la base de datos
     const user = await prisma.admin.findUnique({
       where: { email }
     });
-    console.log('Usuario encontrado:', user ? { id: user.id, email: user.email, password: user.password } : null);
+    
+    console.log('Usuario encontrado:', user ? { 
+      id: user.id, 
+      email: user.email,
+      hasPassword: !!user.password 
+    } : 'No encontrado');
+    
     let passwordMatch = false;
-    if (user) {
+    if (user && user.password) {
       passwordMatch = await bcrypt.compare(password, user.password);
       console.log('Resultado bcrypt.compare:', passwordMatch);
     }
