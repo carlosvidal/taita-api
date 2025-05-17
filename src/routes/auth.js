@@ -54,7 +54,7 @@ router.post('/login', async (req, res) => {
     console.error('Login error:', error);
     return res.status(500).json({
       success: false,
-      error: 'Error en el servidor durante el proceso de autenticación'
+      error: 'Error en el servidor durante la autenticación'
     });
   }
 });

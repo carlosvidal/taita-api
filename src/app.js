@@ -397,13 +397,8 @@ const dynamicCorsMiddleware = async (req, res, next) => {
       res.header("Vary", "Origin");
     }
     
-    // Si es una solicitud OPTIONS (preflight), enviar respuesta inmediata
-    if (req.method === 'OPTIONS') {
-      return res.status(200).end();
-    }
-
     // Manejar solicitudes preflight
-    if (req.method === "OPTIONS") {
+    if (req.method === 'OPTIONS') {
       console.log('Manejando solicitud OPTIONS (preflight)');
       return res.status(200).end();
     }
