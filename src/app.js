@@ -306,7 +306,6 @@ const dynamicCorsMiddleware = async (req, res, next) => {
   const devOrigins = [
     "http://localhost:5173",
     "http://localhost:5174",
-    "http://localhost:5175",
     "http://localhost:4321",
     "http://localhost:4322",
     "http://localhost:4323",
@@ -377,8 +376,8 @@ const dynamicCorsMiddleware = async (req, res, next) => {
   // Si el origen está permitido, configurar los headers CORS
   if (isAllowedOrigin) {
     // No usar '*' cuando se usan credenciales
-    // Usar el origen específico o el primer origen permitido
-    const allowOrigin = origin || mainDomains[0] || 'http://localhost:5173';
+    // Usar el origen específico de la solicitud
+    const allowOrigin = origin || req.headers.origin || mainDomains[0] || 'http://localhost:5173';
     
     console.log(`Configurando CORS para origen: ${allowOrigin}`);
     
@@ -388,7 +387,7 @@ const dynamicCorsMiddleware = async (req, res, next) => {
       "Access-Control-Allow-Methods",
       "GET, PUT, POST, DELETE, PATCH, OPTIONS"
     );
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-XSRF-TOKEN, Accept, Origin");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-XSRF-TOKEN, Accept, Origin, X-Requested-With, Content-Type, Accept");
     res.header("Access-Control-Allow-Credentials", "true");
     res.header("Access-Control-Max-Age", "3600");
     
@@ -397,7 +396,7 @@ const dynamicCorsMiddleware = async (req, res, next) => {
       res.header("Vary", "Origin");
     }
     
-    // Manejar solicitudes preflight
+    // Manejar solicitudes OPTIONS (preflight)
     if (req.method === 'OPTIONS') {
       console.log('Manejando solicitud OPTIONS (preflight)');
       return res.status(200).end();
