@@ -638,6 +638,12 @@ app.use(express.static(path.join(__dirname, "../public")));
 // Rutas de autenticación (deben ir antes del middleware de autenticación)
 app.use("/api/auth", authRouter); // Rutas de autenticación
 
+// Rutas de la API (las rutas públicas deben ir antes que las protegidas)
+app.use("/api/posts/public", postsPublicRouter); // Ruta pública para posts (sin autenticación)
+app.use("/api/categories/public", categoriesPublicRouter); // Ruta pública para categorías (sin autenticación)
+app.use("/api/menu/public", menuPublicRouter); // Ruta pública para menú (sin autenticación)
+app.use("/api/settings/public", settingsPublicRouter); // Ruta pública para configuración (sin autenticación)
+
 // Importar el middleware de autenticación
 import authenticateToken from "./middleware/authenticateToken.js";
 
@@ -670,12 +676,6 @@ const requireAuth = (req, res, next) => {
 // Aplicar el middleware de autenticación a todas las rutas
 app.use(requireAuth);
 
-// Rutas de la API (las rutas públicas deben ir antes que las protegidas)
-app.use("/api/posts/public", postsPublicRouter); // Ruta pública para posts (sin autenticación)
-app.use("/api/categories/public", categoriesPublicRouter); // Ruta pública para categorías (sin autenticación)
-app.use("/api/menu/public", menuPublicRouter); // Ruta pública para menú (sin autenticación)
-app.use("/api/settings/public", settingsPublicRouter); // Ruta pública para configuración (sin autenticación)
-
 // Rutas protegidas
 app.use("/api/posts", postsRouter);
 app.use("/api/cms-posts", cmsPostsRouter); // Ruta para posts del CMS
@@ -684,6 +684,7 @@ app.use("/api/categories", categoriesRouter);
 app.use("/api/blogs", blogsRouter);
 app.use("/api/pages", pagesRouter);
 app.use("/api/menu", menuRouter);
+app.use("/api/stats", statsRouter); // Rutas de estadísticas
 app.use("/api/series", seriesRouter); // Ruta para series
 app.use("/api/users", userProfileRouter);
 app.use("/api/profile-picture-test", profilePictureTestRouter); // Ruta para imágenes de perfil
