@@ -8,45 +8,40 @@ const router = express.Router();
 // Endpoint protegido para el CMS
 router.get("/", authenticateUser, async (req, res) => {
   try {
-    console.log('=== Iniciando consulta de posts ===');
-    console.log('Usuario:', req.user);
-    console.log('URL completa:', req.originalUrl);
-    console.log('Query params recibidos:', req.query);
-    
-    // Obtener parámetros de la URL
     const { blogId, includeDrafts } = req.query;
     let whereClause = {};
     
     // Si se proporciona blogId, filtrar por ese blog
     if (blogId) {
       const parsedBlogId = parseInt(blogId);
-      if (isNaN(parsedBlogId)) {
-        console.error('Error: blogId no es un número válido:', blogId);
-        return res.status(400).json({ error: 'blogId debe ser un número' });
-      }
       whereClause.blogId = parsedBlogId;
       console.log('Filtrando por blogId:', parsedBlogId);
-    } else {
-      console.log('No se proporcionó blogId, se devolverán todos los posts');
     }
     
-    // Si no se incluyen borradores, filtrar solo posts publicados
+    // Incluir borradores si se solicita
     if (includeDrafts !== 'true') {
       whereClause.status = 'PUBLISHED';
-      console.log('Filtrando solo posts publicados');
     }
     
     let posts;
     if (req.user.role === 'SUPER_ADMIN') {
       // SUPER_ADMIN puede ver todos los posts (filtrados por blogId si se proporciona)
       console.log('Usuario es SUPER_ADMIN');
-      console.log('Where clause para la consulta:', JSON.stringify(whereClause, null, 2));
       
-      // Verificar si hay posts en la base de datos
-      const allPosts = await prisma.post.findMany({
-        select: { id: true, blogId: true, title: true }
-      });
-      console.log('Todos los posts en la base de datos:', allPosts);
+      // Si no se proporcionó blogId, mostrar todos los posts
+      if (!blogId) {
+        whereClause = {}; // Mostrar todos los posts sin filtrar por blog
+      } else {
+        // Si se proporcionó blogId, filtrar por ese blog
+        whereClause = { blogId: parseInt(blogId) };
+      }
+      
+      // Mantener el filtro de estado si corresponde
+      if (includeDrafts !== 'true') {
+        whereClause.status = 'PUBLISHED';
+      }
+      
+      console.log('Where clause final para SUPER_ADMIN:', JSON.stringify(whereClause, null, 2));
       
       posts = await prisma.post.findMany({
         where: whereClause,
@@ -75,6 +70,7 @@ router.get("/", authenticateUser, async (req, res) => {
       // Usuarios normales solo ven posts de sus blogs
       console.log('Usuario NO es SUPER_ADMIN');
       
+      // Obtener los blogs del usuario
       const userBlogs = await prisma.blog.findMany({
         where: { adminId: req.user.id },
         select: { id: true, name: true }
@@ -84,6 +80,14 @@ router.get("/", authenticateUser, async (req, res) => {
       
       const blogIds = userBlogs.map(blog => blog.id);
       console.log('IDs de blogs del usuario:', blogIds);
+      
+      // Si no hay blogs, devolver array vacío
+      if (blogIds.length === 0) {
+        return res.json([]);
+      }
+      
+      // Reiniciar el whereClause
+      whereClause = {};
       
       // Si se proporcionó un blogId, verificar que el usuario tenga acceso a ese blog
       if (blogId) {
@@ -103,14 +107,12 @@ router.get("/", authenticateUser, async (req, res) => {
         console.log(`Filtrando por múltiples blogs:`, blogIds);
       }
       
-      console.log('Ejecutando consulta final con whereClause:', JSON.stringify(whereClause, null, 2));
+      // Asegurarse de mantener el filtro de estado
+      if (includeDrafts !== 'true') {
+        whereClause.status = 'PUBLISHED';
+      }
       
-      // Verificar si hay posts para este blog
-      const postsForBlog = await prisma.post.findMany({
-        where: whereClause,
-        select: { id: true, blogId: true, title: true }
-      });
-      console.log('Posts encontrados para el blog:', postsForBlog);
+      console.log('Ejecutando consulta final con whereClause:', JSON.stringify(whereClause, null, 2));
       
       posts = await prisma.post.findMany({
         where: whereClause,
