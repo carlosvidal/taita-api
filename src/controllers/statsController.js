@@ -11,7 +11,11 @@ export const getPostsCount = async (req, res) => {
     }
     
     const count = await prisma.post.count({
-      where: { blogId: parseInt(blogId) }
+      where: { 
+        blog: {
+          uuid: blogId
+        }
+      }
     });
     
     res.json({ count });
