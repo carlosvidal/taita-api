@@ -11,14 +11,29 @@ router.get("/", authenticateUser, async (req, res) => {
     const { blogId } = req.query;
     let whereClause = {};
     
+    console.log('=== Iniciando consulta de posts ===');
+    console.log('Usuario:', req.user);
+    console.log('blogId recibido:', blogId);
+    
     // Si se proporciona blogId, filtrar por ese blog
     if (blogId) {
-      whereClause.blogId = parseInt(blogId);
+      const parsedBlogId = parseInt(blogId);
+      whereClause.blogId = parsedBlogId;
+      console.log('Filtrando por blogId:', parsedBlogId);
     }
     
     let posts;
     if (req.user.role === 'SUPER_ADMIN') {
       // SUPER_ADMIN puede ver todos los posts (filtrados por blogId si se proporciona)
+      console.log('Usuario es SUPER_ADMIN');
+      console.log('Where clause para la consulta:', JSON.stringify(whereClause, null, 2));
+      
+      // Verificar si hay posts en la base de datos
+      const allPosts = await prisma.post.findMany({
+        select: { id: true, blogId: true, title: true }
+      });
+      console.log('Todos los posts en la base de datos:', allPosts);
+      
       posts = await prisma.post.findMany({
         where: whereClause,
         include: {
@@ -44,24 +59,44 @@ router.get("/", authenticateUser, async (req, res) => {
       });
     } else {
       // Usuarios normales solo ven posts de sus blogs
+      console.log('Usuario NO es SUPER_ADMIN');
+      
       const userBlogs = await prisma.blog.findMany({
-        where: { adminId: req.user.id }
+        where: { adminId: req.user.id },
+        select: { id: true, name: true }
       });
       
+      console.log('Blogs del usuario:', userBlogs);
+      
       const blogIds = userBlogs.map(blog => blog.id);
+      console.log('IDs de blogs del usuario:', blogIds);
       
       // Si se proporcionó un blogId, verificar que el usuario tenga acceso a ese blog
       if (blogId) {
         const blogIdNum = parseInt(blogId);
+        console.log(`Verificando acceso al blog ${blogIdNum}...`);
+        
         if (!blogIds.includes(blogIdNum)) {
+          console.error(`Usuario no tiene acceso al blog ${blogIdNum}`);
           return res.status(403).json({ error: 'No tienes acceso a este blog' });
         }
         // Si tiene acceso, filtrar solo por ese blog
         whereClause.blogId = blogIdNum;
+        console.log(`Filtrando por blog específico: ${blogIdNum}`);
       } else {
         // Si no se proporcionó blogId, filtrar por todos los blogs del usuario
         whereClause.blogId = { in: blogIds };
+        console.log(`Filtrando por múltiples blogs:`, blogIds);
       }
+      
+      console.log('Ejecutando consulta final con whereClause:', JSON.stringify(whereClause, null, 2));
+      
+      // Verificar si hay posts para este blog
+      const postsForBlog = await prisma.post.findMany({
+        where: whereClause,
+        select: { id: true, blogId: true, title: true }
+      });
+      console.log('Posts encontrados para el blog:', postsForBlog);
       
       posts = await prisma.post.findMany({
         where: whereClause,
