@@ -8,10 +8,19 @@ const router = express.Router();
 // Endpoint protegido para el CMS
 router.get("/", authenticateUser, async (req, res) => {
   try {
+    const { blogId } = req.query;
+    let whereClause = {};
+    
+    // Si se proporciona blogId, filtrar por ese blog
+    if (blogId) {
+      whereClause.blogId = parseInt(blogId);
+    }
+    
     let posts;
     if (req.user.role === 'SUPER_ADMIN') {
-      // SUPER_ADMIN puede ver todos los posts
+      // SUPER_ADMIN puede ver todos los posts (filtrados por blogId si se proporciona)
       posts = await prisma.post.findMany({
+        where: whereClause,
         include: {
           category: true,
           author: {
@@ -41,10 +50,21 @@ router.get("/", authenticateUser, async (req, res) => {
       
       const blogIds = userBlogs.map(blog => blog.id);
       
+      // Si se proporcionó un blogId, verificar que el usuario tenga acceso a ese blog
+      if (blogId) {
+        const blogIdNum = parseInt(blogId);
+        if (!blogIds.includes(blogIdNum)) {
+          return res.status(403).json({ error: 'No tienes acceso a este blog' });
+        }
+        // Si tiene acceso, filtrar solo por ese blog
+        whereClause.blogId = blogIdNum;
+      } else {
+        // Si no se proporcionó blogId, filtrar por todos los blogs del usuario
+        whereClause.blogId = { in: blogIds };
+      }
+      
       posts = await prisma.post.findMany({
-        where: {
-          blogId: { in: blogIds }
-        },
+        where: whereClause,
         include: {
           category: true,
           author: {
