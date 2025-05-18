@@ -8,18 +8,32 @@ const router = express.Router();
 // Endpoint protegido para el CMS
 router.get("/", authenticateUser, async (req, res) => {
   try {
-    const { blogId } = req.query;
-    let whereClause = {};
-    
     console.log('=== Iniciando consulta de posts ===');
     console.log('Usuario:', req.user);
-    console.log('blogId recibido:', blogId);
+    console.log('URL completa:', req.originalUrl);
+    console.log('Query params recibidos:', req.query);
+    
+    // Obtener parámetros de la URL
+    const { blogId, includeDrafts } = req.query;
+    let whereClause = {};
     
     // Si se proporciona blogId, filtrar por ese blog
     if (blogId) {
       const parsedBlogId = parseInt(blogId);
+      if (isNaN(parsedBlogId)) {
+        console.error('Error: blogId no es un número válido:', blogId);
+        return res.status(400).json({ error: 'blogId debe ser un número' });
+      }
       whereClause.blogId = parsedBlogId;
       console.log('Filtrando por blogId:', parsedBlogId);
+    } else {
+      console.log('No se proporcionó blogId, se devolverán todos los posts');
+    }
+    
+    // Si no se incluyen borradores, filtrar solo posts publicados
+    if (includeDrafts !== 'true') {
+      whereClause.status = 'PUBLISHED';
+      console.log('Filtrando solo posts publicados');
     }
     
     let posts;
