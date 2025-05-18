@@ -1,9 +1,26 @@
 import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenv.config();
+// Obtener el directorio actual del módulo
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const prisma = new PrismaClient();
+// Cargar variables de entorno de producción
+dotenv.config({ path: path.resolve(__dirname, '../../.env.production') });
+
+console.log('Conectando a la base de datos de producción...');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('DATABASE_URL:', process.env.DATABASE_URL ? '*** Configurado ***' : 'No configurado');
+
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL
+    }
+  }
+});
 
 async function checkPosts() {
   try {
