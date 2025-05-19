@@ -40,28 +40,30 @@ const prisma = new PrismaClient();
 
 // Función para corregir la base de datos
 async function fixDatabase() {
-  console.log('Iniciando corrección de la base de datos...');
+  console.log("Iniciando corrección de la base de datos...");
 
   try {
     // 1. Verificar y obtener el usuario admin
     let admin = await prisma.admin.findFirst({
-      where: { role: 'SUPER_ADMIN' }
+      where: { role: "SUPER_ADMIN" },
     });
 
     if (!admin) {
-      console.log('No se encontró un usuario SUPER_ADMIN. Creando uno nuevo...');
-      
+      console.log(
+        "No se encontró un usuario SUPER_ADMIN. Creando uno nuevo..."
+      );
+
       // Crear un nuevo admin si no existe
-      const hashedPassword = await bcrypt.hash('securepassword', 10);
-      
+      const hashedPassword = await bcrypt.hash("securepassword", 10);
+
       admin = await prisma.admin.create({
         data: {
           uuid: uuidv4(),
-          email: 'admin@example.com',
+          email: "admin@example.com",
           password: hashedPassword,
-          name: 'Admin User',
-          role: 'SUPER_ADMIN'
-        }
+          name: "Admin User",
+          role: "SUPER_ADMIN",
+        },
       });
       console.log(`Nuevo admin creado: ${admin.name} (${admin.email})`);
     } else {
@@ -70,39 +72,45 @@ async function fixDatabase() {
 
     // 2. Verificar blogs existentes
     const existingBlogs = await prisma.blog.findMany();
-    console.log(`Se encontraron ${existingBlogs.length} blogs en la base de datos`);
+    console.log(
+      `Se encontraron ${existingBlogs.length} blogs en la base de datos`
+    );
 
     // 3. Procesar cada blog existente
     for (const blog of existingBlogs) {
-      console.log(`Procesando blog ID ${blog.id}: ${blog.name || 'Sin nombre'}`);
-      
+      console.log(
+        `Procesando blog ID ${blog.id}: ${blog.name || "Sin nombre"}`
+      );
+
       // Verificar si el blog tiene UUID
       if (!blog.uuid) {
         await prisma.blog.update({
           where: { id: blog.id },
-          data: { uuid: uuidv4() }
+          data: { uuid: uuidv4() },
         });
         console.log(`- Asignado nuevo UUID al blog ID ${blog.id}`);
       }
-      
+
       // Verificar si el blog está asociado a un admin
       if (!blog.adminId) {
         try {
           await prisma.blog.update({
             where: { id: blog.id },
-            data: { adminId: admin.id }
+            data: { adminId: admin.id },
           });
           console.log(`- Asociado blog ID ${blog.id} al admin ID ${admin.id}`);
         } catch (error) {
-          if (error.code === 'P2002') {
+          if (error.code === "P2002") {
             // Si hay un error de restricción única, verificar si ya existe un blog con este admin
             const existingBlog = await prisma.blog.findFirst({
-              where: { adminId: admin.id }
+              where: { adminId: admin.id },
             });
-            
+
             if (existingBlog) {
-              console.log(`- El admin ID ${admin.id} ya está asociado al blog ID ${existingBlog.id}. No se puede asociar al blog ID ${blog.id}`);
-              
+              console.log(
+                `- El admin ID ${admin.id} ya está asociado al blog ID ${existingBlog.id}. No se puede asociar al blog ID ${blog.id}`
+              );
+
               // Si el blog actual no tiene admin, crear un nuevo admin para él
               const newAdmin = await prisma.admin.create({
                 data: {
@@ -110,97 +118,108 @@ async function fixDatabase() {
                   email: `admin-blog${blog.id}@example.com`,
                   password: await bcrypt.hash(`blog${blog.id}password`, 10),
                   name: `Admin Blog ${blog.id}`,
-                  role: 'ADMIN'
-                }
+                  role: "ADMIN",
+                },
               });
-              
+
               // Asociar el blog al nuevo admin
               await prisma.blog.update({
                 where: { id: blog.id },
-                data: { adminId: newAdmin.id }
+                data: { adminId: newAdmin.id },
               });
-              
-              console.log(`- Creado nuevo admin ID ${newAdmin.id} para el blog ID ${blog.id}`);
+
+              console.log(
+                `- Creado nuevo admin ID ${newAdmin.id} para el blog ID ${blog.id}`
+              );
             }
           } else {
-            console.error(`- Error al actualizar el blog ID ${blog.id}:`, error);
+            console.error(
+              `- Error al actualizar el blog ID ${blog.id}:`,
+              error
+            );
           }
         }
       }
-      
+
       // Verificar si el blog tiene subdominio
       if (!blog.subdomain) {
-        const subdomain = blog.name 
-          ? blog.name.toLowerCase().replace(/[^a-z0-9]/g, '') 
+        const subdomain = blog.name
+          ? blog.name.toLowerCase().replace(/[^a-z0-9]/g, "")
           : `blog${blog.id}`;
-        
+
         await prisma.blog.update({
           where: { id: blog.id },
-          data: { subdomain }
+          data: { subdomain },
         });
-        console.log(`- Asignado subdominio "${subdomain}" al blog ID ${blog.id}`);
+        console.log(
+          `- Asignado subdominio "${subdomain}" al blog ID ${blog.id}`
+        );
       }
-      
+
       // Verificar si el blog tiene plan
       if (!blog.plan) {
         await prisma.blog.update({
           where: { id: blog.id },
-          data: { plan: 'FREE' }
+          data: { plan: "FREE" },
         });
         console.log(`- Asignado plan "FREE" al blog ID ${blog.id}`);
       }
-      
+
       // Verificar y crear categorías por defecto si no existen
       const defaultCategories = [
         { name: "Tecnología", slug: "tecnologia" },
         { name: "Vida", slug: "vida" },
-        { name: "Noticias", slug: "noticias" }
+        { name: "Noticias", slug: "noticias" },
       ];
-      
+
       let createdCount = 0;
-      
+
       for (const cat of defaultCategories) {
         try {
           // Verificar si la categoría ya existe para este blog
           const existingCategory = await prisma.category.findFirst({
             where: {
               blogId: blog.id,
-              OR: [
-                { name: cat.name },
-                { slug: cat.slug }
-              ]
-            }
+              OR: [{ name: cat.name }, { slug: cat.slug }],
+            },
           });
-          
+
           if (!existingCategory) {
             await prisma.category.create({
               data: {
                 name: cat.name,
                 slug: cat.slug,
-                blogId: blog.id
-              }
+                blogId: blog.id,
+              },
             });
             createdCount++;
           }
         } catch (error) {
-          console.error(`- Error al crear la categoría ${cat.name}:`, error.message);
+          console.error(
+            `- Error al crear la categoría ${cat.name}:`,
+            error.message
+          );
         }
       }
-      
+
       if (createdCount > 0) {
-        console.log(`- Creadas ${createdCount} categorías para el blog ID ${blog.id}`);
+        console.log(
+          `- Creadas ${createdCount} categorías para el blog ID ${blog.id}`
+        );
       } else {
         const totalCategories = await prisma.category.count({
-          where: { blogId: blog.id }
+          where: { blogId: blog.id },
         });
-        console.log(`- El blog ID ${blog.id} ya tiene ${totalCategories} categorías`);
+        console.log(
+          `- El blog ID ${blog.id} ya tiene ${totalCategories} categorías`
+        );
       }
     }
 
     // 4. Si no hay blogs, crear uno nuevo
     if (existingBlogs.length === 0) {
-      console.log('No se encontraron blogs. Creando un blog de ejemplo...');
-      
+      console.log("No se encontraron blogs. Creando un blog de ejemplo...");
+
       const newBlog = await prisma.blog.create({
         data: {
           uuid: uuidv4(),
@@ -213,35 +232,40 @@ async function fixDatabase() {
           language: "es",
           template: "default",
           googleAnalyticsId: "",
-          socialNetworks: { twitter: "", facebook: "", instagram: "" }
-        }
+          socialNetworks: { twitter: "", facebook: "", instagram: "" },
+        },
       });
-      
-      console.log(`Nuevo blog creado con ID: ${newBlog.id} y UUID: ${newBlog.uuid}`);
-      
+
+      console.log(
+        `Nuevo blog creado con ID: ${newBlog.id} y UUID: ${newBlog.uuid}`
+      );
+
       // Crear categorías para el nuevo blog
       const defaultCategories = [
         { name: "Tecnología", slug: "tecnologia" },
         { name: "Vida", slug: "vida" },
-        { name: "Noticias", slug: "noticias" }
+        { name: "Noticias", slug: "noticias" },
       ];
-      
+
       for (const cat of defaultCategories) {
         try {
           await prisma.category.create({
             data: {
               name: cat.name,
               slug: cat.slug,
-              blogId: newBlog.id
-            }
+              blogId: newBlog.id,
+            },
           });
           console.log(`- Categoría creada: ${cat.name}`);
         } catch (error) {
-          console.error(`- Error al crear la categoría ${cat.name}:`, error.message);
+          console.error(
+            `- Error al crear la categoría ${cat.name}:`,
+            error.message
+          );
         }
       }
-      
-      console.log('Categorías creadas para el nuevo blog');
+
+      console.log("Categorías creadas para el nuevo blog");
     }
 
     // 5. Mostrar todos los blogs disponibles
@@ -253,25 +277,32 @@ async function fixDatabase() {
         subdomain: true,
         adminId: true,
         _count: {
-          select: { categories: true }
-        }
-      }
+          select: { categories: true },
+        },
+      },
     });
-    
-    console.log('\nBlogs disponibles después de las correcciones:');
-    console.log(allBlogs.map(blog => ({
-      id: blog.id,
-      uuid: blog.uuid,
-      name: blog.name,
-      subdomain: blog.subdomain,
-      adminId: blog.adminId,
-      categories: blog._count.categories
-    })));
-    
-    console.log('\nProceso de corrección de base de datos completado con éxito');
+
+    console.log("\nBlogs disponibles después de las correcciones:");
+    console.log(
+      allBlogs.map((blog) => ({
+        id: blog.id,
+        uuid: blog.uuid,
+        name: blog.name,
+        subdomain: blog.subdomain,
+        adminId: blog.adminId,
+        categories: blog._count.categories,
+      }))
+    );
+
+    console.log(
+      "\nProceso de corrección de base de datos completado con éxito"
+    );
     return true;
   } catch (error) {
-    console.error('Error durante el proceso de corrección de la base de datos:', error);
+    console.error(
+      "Error durante el proceso de corrección de la base de datos:",
+      error
+    );
     return false;
   }
 }
@@ -283,18 +314,26 @@ addDebugRoutes(app);
 // Configuración mejorada de CORS
 const corsOptions = {
   origin: [
-    '*',
-    'https://taita.blog',
-    'https://www.taita.blog',
-    'https://demo.taita.blog',
-    'http://localhost:4321',
-    'http://localhost:5173',
-    'http://localhost:3000'
-    'http://192.168.3.115:3000'
+    "*",
+    "https://taita.blog",
+    "https://www.taita.blog",
+    "https://demo.taita.blog",
+    "http://localhost:4321",
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://192.168.3.115:3000",
   ],
-  methods: ['GET', 'PUT', 'POST', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Taita-Subdomain', 'Accept', 'Origin', 'Referer', 'User-Agent'],
-  credentials: true
+  methods: ["GET", "PUT", "POST", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Taita-Subdomain",
+    "Accept",
+    "Origin",
+    "Referer",
+    "User-Agent",
+  ],
+  credentials: true,
 };
 
 app.use(cors(corsOptions));
@@ -323,83 +362,90 @@ const dynamicCorsMiddleware = async (req, res, next) => {
     "https://taita-api.onrender.com",
     "https://taita-cms.onrender.com",
   ];
-  
+
   // Función para verificar si un origen es un subdominio de taita.blog
   const isTaitaSubdomain = (origin) => {
     if (!origin) {
-      console.log('Origin is undefined or empty');
+      console.log("Origin is undefined or empty");
       return false;
     }
-    
+
     try {
       // Si el origen no comienza con http:// o https://, añadirlo temporalmente
-      const urlToCheck = origin.startsWith('http') ? origin : `https://${origin}`;
+      const urlToCheck = origin.startsWith("http")
+        ? origin
+        : `https://${origin}`;
       const hostname = new URL(urlToCheck).hostname;
-      
+
       // Verificar si es un subdominio de taita.blog
-      const isValid = (
-        hostname.endsWith('.taita.blog') || 
-        hostname === 'taita.blog' || 
-        hostname === 'www.taita.blog' ||
-        hostname === 'localhost' // Para desarrollo local
-      );
-      
+      const isValid =
+        hostname.endsWith(".taita.blog") ||
+        hostname === "taita.blog" ||
+        hostname === "www.taita.blog" ||
+        hostname === "localhost"; // Para desarrollo local
+
       console.log(`Verificando subdominio para ${hostname}: ${isValid}`);
       return isValid;
     } catch (error) {
-      console.error('Error al verificar el subdominio:', error.message);
-      console.error('Origin que causó el error:', origin);
+      console.error("Error al verificar el subdominio:", error.message);
+      console.error("Origin que causó el error:", origin);
       return false;
     }
   };
 
   // Debug: Mostrar información del origen
-  console.log('=== Información de la solicitud ===');
-  console.log('Método:', req.method);
-  console.log('URL:', req.originalUrl);
-  console.log('Origen de la solicitud:', origin);
-  console.log('Headers:', JSON.stringify(req.headers, null, 2));
-  
+  console.log("=== Información de la solicitud ===");
+  console.log("Método:", req.method);
+  console.log("URL:", req.originalUrl);
+  console.log("Origen de la solicitud:", origin);
+  console.log("Headers:", JSON.stringify(req.headers, null, 2));
+
   // Verificar si el origen está permitido
-  const isAllowedOrigin = (
+  const isAllowedOrigin =
     !origin || // Permitir solicitudes sin origen (como desde Postman)
     isTaitaSubdomain(origin) ||
     devOrigins.includes(origin) ||
+    mainDomains.includes(origin);
+
+  console.log("Es subdominio de taita.blog:", isTaitaSubdomain(origin));
+  console.log("Está en lista de desarrollo:", devOrigins.includes(origin));
+  console.log(
+    "Está en lista de dominios principales:",
     mainDomains.includes(origin)
   );
-  
-  console.log('Es subdominio de taita.blog:', isTaitaSubdomain(origin));
-  console.log('Está en lista de desarrollo:', devOrigins.includes(origin));
-  console.log('Está en lista de dominios principales:', mainDomains.includes(origin));
-  console.log('Origen permitido:', isAllowedOrigin);
-  console.log('==================================');
+  console.log("Origen permitido:", isAllowedOrigin);
+  console.log("==================================");
 
   // Si el origen está permitido, configurar los headers CORS
   if (isAllowedOrigin) {
     // No usar '*' cuando se usan credenciales
     // Usar el origen específico de la solicitud
-    const allowOrigin = origin || req.headers.origin || mainDomains[0] || 'http://localhost:5173';
-    
+    const allowOrigin =
+      origin || req.headers.origin || mainDomains[0] || "http://localhost:5173";
+
     console.log(`Configurando CORS para origen: ${allowOrigin}`);
-    
+
     // Configuración de CORS para credenciales
     res.header("Access-Control-Allow-Origin", allowOrigin);
     res.header(
       "Access-Control-Allow-Methods",
       "GET, PUT, POST, DELETE, PATCH, OPTIONS"
     );
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-XSRF-TOKEN, Accept, Origin, X-Requested-With, Content-Type, Accept");
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, X-Requested-With, X-XSRF-TOKEN, Accept, Origin, X-Requested-With, Content-Type, Accept"
+    );
     res.header("Access-Control-Allow-Credentials", "true");
     res.header("Access-Control-Max-Age", "3600");
-    
+
     // Para solicitudes con credenciales, asegurarse de que el origen coincida exactamente
     if (req.headers.origin) {
       res.header("Vary", "Origin");
     }
-    
+
     // Manejar solicitudes OPTIONS (preflight)
-    if (req.method === 'OPTIONS') {
-      console.log('Manejando solicitud OPTIONS (preflight)');
+    if (req.method === "OPTIONS") {
+      console.log("Manejando solicitud OPTIONS (preflight)");
       return res.status(200).end();
     }
 
@@ -474,31 +520,35 @@ app.use("/api/emails", emailsRouter);
 app.get("/api/debug/tenant", async (req, res) => {
   try {
     // Extra todos los posibles identificadores de tenant
-    const host = req.headers.host || '';
-    const xTaitaSubdomain = req.headers['x-taita-subdomain'] || '';
-    const querySubdomain = req.query.subdomain || '';
-    const origin = req.headers.origin || '';
-    
+    const host = req.headers.host || "";
+    const xTaitaSubdomain = req.headers["x-taita-subdomain"] || "";
+    const querySubdomain = req.query.subdomain || "";
+    const origin = req.headers.origin || "";
+
     // Leer todos los headers para depuración
     const headers = {};
-    Object.keys(req.headers).forEach(key => {
+    Object.keys(req.headers).forEach((key) => {
       headers[key] = req.headers[key];
     });
-    
+
     // Determinar subdomain efectivo
-    let subdomain = xTaitaSubdomain || querySubdomain || '';
+    let subdomain = xTaitaSubdomain || querySubdomain || "";
     if (!subdomain && host) {
-      subdomain = host.includes('.') ? host.split('.')[0] : (host.includes(':') ? 'demo' : host);
+      subdomain = host.includes(".")
+        ? host.split(".")[0]
+        : host.includes(":")
+        ? "demo"
+        : host;
     }
-    
+
     // Buscar blog por subdomain
     let blog = null;
     if (subdomain) {
       blog = await prisma.blog.findFirst({
-        where: { subdomain }
+        where: { subdomain },
       });
     }
-    
+
     // Obtener lista de blogs para diagnóstico
     const allBlogs = await prisma.blog.findMany({
       select: {
@@ -510,13 +560,13 @@ app.get("/api/debug/tenant", async (req, res) => {
         _count: {
           select: {
             posts: {
-              where: { status: 'PUBLISHED' }
-            }
-          }
-        }
-      }
+              where: { status: "PUBLISHED" },
+            },
+          },
+        },
+      },
     });
-    
+
     // Devolver información de diagnóstico
     res.json({
       host,
@@ -526,14 +576,14 @@ app.get("/api/debug/tenant", async (req, res) => {
       sources: {
         xTaitaSubdomain,
         querySubdomain,
-        fromHost: host.includes('.') ? host.split('.')[0] : ''
+        fromHost: host.includes(".") ? host.split(".")[0] : "",
       },
       blog,
-      allBlogs: allBlogs.map(b => ({
+      allBlogs: allBlogs.map((b) => ({
         ...b,
-        postsCount: b._count.posts
+        postsCount: b._count.posts,
       })),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   } catch (error) {
     console.error("Error en endpoint de diagnóstico:", error);
@@ -545,35 +595,34 @@ app.get("/api/debug/tenant", async (req, res) => {
 app.get("/api/debug/posts", async (req, res) => {
   try {
     // Obtener subdomain de múltiples fuentes
-    const subdomain = req.headers['x-taita-subdomain'] || 
-                     req.query.subdomain || 
-                     'demo';
-    
+    const subdomain =
+      req.headers["x-taita-subdomain"] || req.query.subdomain || "demo";
+
     console.log(`[DEBUG] Buscando posts para subdomain: ${subdomain}`);
-    
+
     // Buscar blog
     const blog = await prisma.blog.findFirst({
-      where: { subdomain }
+      where: { subdomain },
     });
-    
+
     if (!blog) {
       console.log(`[DEBUG] No se encontró blog con subdomain: ${subdomain}`);
-      return res.status(404).json({ 
-        error: "Blog no encontrado", 
+      return res.status(404).json({
+        error: "Blog no encontrado",
         subdomain,
         availableBlogs: await prisma.blog.findMany({
-          select: { id: true, name: true, subdomain: true }
-        })
+          select: { id: true, name: true, subdomain: true },
+        }),
       });
     }
-    
+
     console.log(`[DEBUG] Blog encontrado: ${blog.name} (ID: ${blog.id})`);
-    
+
     // Buscar posts publicados
     const posts = await prisma.post.findMany({
       where: {
         blogId: blog.id,
-        status: 'PUBLISHED'
+        status: "PUBLISHED",
       },
       include: {
         category: true,
@@ -581,28 +630,28 @@ app.get("/api/debug/posts", async (req, res) => {
           select: {
             id: true,
             name: true,
-            bio: true
-          }
-        }
+            bio: true,
+          },
+        },
       },
-      orderBy: { publishedAt: "desc" }
+      orderBy: { publishedAt: "desc" },
     });
-    
+
     console.log(`[DEBUG] Encontrados ${posts.length} posts publicados`);
-    
+
     return res.json({
       success: true,
       blogId: blog.id,
       blogName: blog.name,
       subdomain: blog.subdomain,
       postsCount: posts.length,
-      posts: posts.map(p => ({
+      posts: posts.map((p) => ({
         id: p.id,
         uuid: p.uuid,
         title: p.title,
         slug: p.slug,
-        publishedAt: p.publishedAt
-      }))
+        publishedAt: p.publishedAt,
+      })),
     });
   } catch (error) {
     console.error("Error en endpoint de diagnóstico de posts:", error);
@@ -652,19 +701,19 @@ import authenticateToken from "./middleware/authenticateToken.js";
 const requireAuth = (req, res, next) => {
   // Lista de rutas que no requieren autenticación
   const publicPaths = [
-    '/api/auth',
-    '/api/posts/public',
-    '/api/categories/public',
-    '/api/menu/public',
-    '/api/settings/public',
-    '/uploads',
-    '/api/password',
-    '/api/auth/login'  // Asegurarse de que la ruta de login esté en la lista de rutas públicas
+    "/api/auth",
+    "/api/posts/public",
+    "/api/categories/public",
+    "/api/menu/public",
+    "/api/settings/public",
+    "/uploads",
+    "/api/password",
+    "/api/auth/login", // Asegurarse de que la ruta de login esté en la lista de rutas públicas
   ];
 
   // Verificar si la ruta actual está en la lista de rutas públicas
-  const isPublicPath = publicPaths.some(path => req.path.startsWith(path));
-  
+  const isPublicPath = publicPaths.some((path) => req.path.startsWith(path));
+
   if (isPublicPath) {
     console.log(`Ruta pública detectada: ${req.path}`);
     return next();
@@ -707,15 +756,17 @@ app.use("/api/password", passwordRouter); // Añadir rutas de recuperación de c
 // Ejecutar la función de corrección de la base de datos antes de iniciar el servidor
 (async () => {
   try {
-    console.log('Iniciando proceso de corrección de la base de datos antes de iniciar el servidor...');
+    console.log(
+      "Iniciando proceso de corrección de la base de datos antes de iniciar el servidor..."
+    );
     await fixDatabase();
-    
+
     // Iniciar el servidor después de corregir la base de datos
     app.listen(port, () => {
       console.log(`Server running at http://localhost:${port}`);
     });
   } catch (error) {
-    console.error('Error al iniciar el servidor:', error);
+    console.error("Error al iniciar el servidor:", error);
     process.exit(1);
   }
 })();
