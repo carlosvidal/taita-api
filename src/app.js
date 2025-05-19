@@ -290,6 +290,7 @@ const corsOptions = {
     'http://localhost:4321',
     'http://localhost:5173',
     'http://localhost:3000'
+    'http://192.168.3.115:3000'
   ],
   methods: ['GET', 'PUT', 'POST', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Taita-Subdomain', 'Accept', 'Origin', 'Referer', 'User-Agent'],
