@@ -155,4 +155,78 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Endpoint público para obtener una categoría por su slug
+router.get('/:slug', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    
+    // Obtener el blog basado en el subdominio o parámetros de consulta
+    let blog;
+    
+    // Priorizar el header X-Taita-Subdomain si está presente
+    if (req.headers['x-taita-subdomain']) {
+      const subdomain = req.headers['x-taita-subdomain'];
+      blog = await prisma.blog.findFirst({
+        where: { subdomain }
+      });
+    } 
+    // Intentar por parámetros de consulta
+    else if (req.query.blogId) {
+      blog = await prisma.blog.findUnique({
+        where: { id: parseInt(req.query.blogId) }
+      });
+    } else if (req.query.blogUuid) {
+      blog = await prisma.blog.findFirst({
+        where: { uuid: req.query.blogUuid }
+      });
+    }
+    
+    // Si no se encontró el blog, usar el blog con ID 1 como fallback
+    if (!blog) {
+      blog = await prisma.blog.findUnique({
+        where: { id: 1 }
+      });
+      
+      if (!blog) {
+        return res.status(404).json({ error: "Blog not found" });
+      }
+    }
+    
+    // Buscar la categoría por slug y blogId
+    const category = await prisma.category.findFirst({
+      where: {
+        slug,
+        blogId: blog.id
+      },
+      include: {
+        posts: {
+          where: { status: 'PUBLISHED' },
+          select: { id: true }
+        }
+      }
+    });
+    
+    if (!category) {
+      return res.status(404).json({ error: "Category not found" });
+    }
+    
+    // Formatear la respuesta
+    const response = {
+      id: category.id,
+      uuid: category.uuid,
+      name: category.name,
+      slug: category.slug,
+      description: category.description,
+      postCount: category.posts.length,
+      createdAt: category.createdAt,
+      updatedAt: category.updatedAt
+    };
+    
+    res.json(response);
+  } catch (error) {
+    console.error('Error al obtener la categoría:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
