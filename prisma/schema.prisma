@@ -96,6 +96,7 @@ model Blog {
   posts     Post[]
   pages     Page[]
   categories Category[]
+  tags      Tag[]
   comments  Comment[]
   series    Series[]
   media     Media[]
@@ -119,6 +120,7 @@ model Post {
   updatedAt      DateTime @updatedAt
   category       Category? @relation(fields: [categoryId], references: [id])
   categoryId     Int?
+  postTags       PostTag[]
   image          String?  // Path to featured image
   imageId        Int?     // Reference to Media model
   thumbnail      String?  // Optional thumbnail path
@@ -144,6 +146,31 @@ model Category {
   // La combinación de name y blogId debe ser única
   @@unique([name, blogId], name: "category_name_blog_id_unique")
   @@unique([slug, blogId], name: "category_slug_blog_id_unique")
+}
+
+model Tag {
+  id        Int      @id @default(autoincrement())
+  uuid      String   @default(uuid()) @unique
+  name      String
+  slug      String
+  blog      Blog     @relation(fields: [blogId], references: [id])
+  blogId    Int
+  postTags  PostTag[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([name, blogId], name: "tag_name_blog_id_unique")
+  @@unique([slug, blogId], name: "tag_slug_blog_id_unique")
+}
+
+model PostTag {
+  post      Post     @relation(fields: [postId], references: [id])
+  postId    Int
+  tag       Tag      @relation(fields: [tagId], references: [id])
+  tagId     Int
+  addedAt   DateTime @default(now())
+
+  @@id([postId, tagId])
 }
 
 model Page {

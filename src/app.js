@@ -693,6 +693,8 @@ app.use("/api/posts/public", postsPublicRouter); // Ruta pública para posts (si
 app.use("/api/categories/public", categoriesPublicRouter); // Ruta pública para categorías (sin autenticación)
 app.use("/api/menu/public", menuPublicRouter); // Ruta pública para menú (sin autenticación)
 app.use("/api/settings/public", settingsPublicRouter); // Ruta pública para configuración (sin autenticación)
+import tagsPublicRouter from "./routes/tags-public.js";
+app.use("/api/tags/public", tagsPublicRouter); // Ruta pública para tags (sin autenticación)
 
 // Importar el middleware de autenticación
 import authenticateToken from "./middleware/authenticateToken.js";
