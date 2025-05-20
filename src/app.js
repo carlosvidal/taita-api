@@ -708,6 +708,8 @@ const requireAuth = (req, res, next) => {
     "/api/categories/public",
     "/api/menu/public",
     "/api/settings/public",
+    "/api/pages/public",
+    "/api/search/public",
     "/uploads",
     "/api/password",
     "/api/auth/login", // Asegurarse de que la ruta de login esté en la lista de rutas públicas
