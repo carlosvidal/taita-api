@@ -716,7 +716,7 @@ const requireAuth = (req, res, next) => {
   ];
 
   // Verificar si la ruta actual está en la lista de rutas públicas
-  const isPublicPath = publicPaths.some((path) => req.path.startsWith(path));
+  const isPublicPath = publicPaths.some((path) => req.originalUrl.startsWith(path));
 
   if (isPublicPath) {
     console.log(`Ruta pública detectada: ${req.path}`);
