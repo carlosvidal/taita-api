@@ -1,6 +1,3 @@
--- CreateEnum
-CREATE TYPE "public"."PublishStatus" AS ENUM ('DRAFT', 'PUBLISHED');
-
 -- CreateTable
 CREATE TABLE "Tag" (
     "id" SERIAL NOT NULL,
