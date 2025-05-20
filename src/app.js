@@ -745,6 +745,12 @@ app.use("/api", statsRouter);
 app.use("/api/media", mediaRouter); // Rutas de medios
 app.use("/api/settings", settingsRouter); // Rutas de configuraciones
 
+// Importar y usar los nuevos endpoints públicos
+import pagesPublicRouter from "./routes/pages-public.js";
+import searchPublicRouter from "./routes/search-public.js";
+app.use("/api/pages/public", pagesPublicRouter);
+app.use("/api/search/public", searchPublicRouter);
+
 // Importar y usar las nuevas rutas de suscripciones y pagos
 import subscriptionsRouter from "./routes/subscriptions.js";
 import paymentRouter from "./routes/paymentRoutes.js";
