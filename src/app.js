@@ -433,7 +433,7 @@ const dynamicCorsMiddleware = async (req, res, next) => {
     );
     res.header(
       "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, X-Requested-With, X-XSRF-TOKEN, Accept, Origin, X-Requested-With, Content-Type, Accept"
+      "Content-Type, Authorization, X-Requested-With, X-XSRF-TOKEN, Accept, Origin, X-Requested-With, Content-Type, Accept, x-tenant"
     );
     res.header("Access-Control-Allow-Credentials", "true");
     res.header("Access-Control-Max-Age", "3600");
@@ -459,7 +459,7 @@ const dynamicCorsMiddleware = async (req, res, next) => {
       "Access-Control-Allow-Methods",
       "GET, PUT, POST, DELETE, PATCH, OPTIONS"
     );
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, x-tenant");
     res.header("Access-Control-Allow-Credentials", "true");
 
     if (req.method === "OPTIONS") {
@@ -486,7 +486,7 @@ const dynamicCorsMiddleware = async (req, res, next) => {
         "Access-Control-Allow-Methods",
         "GET, PUT, POST, DELETE, PATCH, OPTIONS"
       );
-      res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+      res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, x-tenant");
       res.header("Access-Control-Allow-Credentials", "true");
 
       console.log(
