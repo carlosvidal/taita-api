@@ -748,9 +748,9 @@ app.use("/api/media", mediaRouter); // Rutas de medios
 app.use("/api/settings", settingsRouter); // Rutas de configuraciones
 
 // Importar y usar los nuevos endpoints públicos
+// Routers públicos (deben ir antes del middleware de autenticación)
 import pagesPublicRouter from "./routes/pages-public.js";
 import searchPublicRouter from "./routes/search-public.js";
-// Routers públicos (deben ir antes del middleware de autenticación)
 app.use("/api/posts/public", postsPublicRouter);
 app.use("/api/categories/public", categoriesPublicRouter);
 app.use("/api/menu/public", menuPublicRouter);
@@ -758,6 +758,9 @@ app.use("/api/settings/public", settingsPublicRouter);
 app.use("/api/tags/public", tagsPublicRouter);
 app.use("/api/pages/public", pagesPublicRouter);
 app.use("/api/search/public", searchPublicRouter);
+
+// Middleware global de autenticación (debe ir después de todos los routers públicos)
+app.use(requireAuth);
 
 // Importar y usar las nuevas rutas de suscripciones y pagos
 import subscriptionsRouter from "./routes/subscriptions.js";
