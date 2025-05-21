@@ -152,7 +152,7 @@ router.post("/", async (req, res) => {
       excerpt,
       status: statusValue,
       author: { connect: { id: authorId } },
-      blogId, // Agregar blogId al objeto de datos
+      blog: { connect: { id: blogId } }, // Relación correcta con blog
     };
 
 
