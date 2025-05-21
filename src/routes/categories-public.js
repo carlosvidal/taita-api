@@ -115,13 +115,6 @@ router.get('/', async (req, res) => {
     
     // Si no se encontró el blog, intentar usar el blog con ID 1 como fallback
     if (!blog) {
-      console.log('No se encontró el blog para categorías, intentando usar el blog con ID 1 como fallback');
-      blog = await prisma.blog.findUnique({
-        where: { id: 1 }
-      });
-    }
-    
-    if (!blog) {
       return res.status(404).json({ error: "Blog not found" });
     }
     
