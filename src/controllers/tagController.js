@@ -69,45 +69,28 @@ export const getPostsByTag = async (req, res) => {
         postTags: {
           include: {
             post: {
-              where: {
-                status: "PUBLISHED",
-                publishedAt: { lte: new Date() },
-              },
               include: {
-                author: {
-                  select: { id: true, name: true, picture: true },
-                },
-                category: {
-                  select: { id: true, name: true, slug: true },
-                },
-              },
-            },
-          },
-        },
-        _count: {
-          select: {
-            postTags: {
-              where: {
-                post: { status: "PUBLISHED", publishedAt: { lte: new Date() } },
-              },
-            },
-          },
-        },
-      },
+                author: { select: { id: true, name: true, picture: true } },
+                category: { select: { id: true, name: true, slug: true } },
+              }
+            }
+          }
+        }
+      }
     });
 
     if (!tag) {
       return res.status(404).json({ error: "Etiqueta no encontrada" });
     }
 
-    // Extraer los posts publicados de los postTags
-    const posts = tag.postTags
+    // Filtrar solo posts publicados y paginar
+    const publishedPosts = tag.postTags
       .map(pt => pt.post)
       .filter(post => post && post.status === "PUBLISHED" && post.publishedAt && new Date(post.publishedAt) <= new Date());
 
-    const totalPosts = tag._count.postTags;
+    const totalPosts = publishedPosts.length;
     const totalPages = Math.ceil(totalPosts / perPage);
-    const paginatedPosts = posts.slice((page - 1) * perPage, (page) * perPage);
+    const paginatedPosts = publishedPosts.slice((page - 1) * perPage, page * perPage);
 
     res.json({
       data: {
