@@ -733,6 +733,7 @@ const requireAuth = (req, res, next) => {
 };
 
 // Aplicar el middleware de autenticación a todas las rutas
+// Middleware global de autenticación (debe ir después de todos los routers públicos, solo una vez)
 app.use(requireAuth);
 
 // Rutas protegidas
@@ -765,6 +766,7 @@ app.use("/api/pages/public", pagesPublicRouter);
 app.use("/api/search/public", searchPublicRouter);
 
 // Middleware global de autenticación (debe ir después de todos los routers públicos)
+// Middleware global de autenticación (debe ir después de todos los routers públicos, solo una vez)
 app.use(requireAuth);
 
 // Importar y usar las nuevas rutas de suscripciones y pagos
