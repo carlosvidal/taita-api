@@ -715,11 +715,16 @@ const requireAuth = (req, res, next) => {
     "/api/auth/login", // Asegurarse de que la ruta de login esté en la lista de rutas públicas
   ];
 
-  // Verificar si la ruta actual está en la lista de rutas públicas
-  const isPublicPath = publicPaths.some((path) => req.originalUrl.startsWith(path));
+  // Verificar si la ruta actual está en la lista de rutas públicas (comparación robusta)
+  const isPublicPath = publicPaths.some((path) =>
+    req.originalUrl === path ||
+    req.originalUrl.startsWith(path + "/") ||
+    req.originalUrl.startsWith(path + "?")
+  );
+  console.log(`[requireAuth] originalUrl: ${req.originalUrl} | isPublicPath: ${isPublicPath}`);
 
   if (isPublicPath) {
-    console.log(`Ruta pública detectada: ${req.path}`);
+    console.log(`Ruta pública detectada: ${req.originalUrl}`);
     return next();
   }
 
