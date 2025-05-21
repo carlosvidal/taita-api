@@ -749,33 +749,33 @@ const requireAuth = (req, res, next) => {
 // Routers públicos (deben ir antes del middleware de autenticación)
 import pagesPublicRouter from "./routes/pages-public.js";
 import searchPublicRouter from "./routes/search-public.js";
-app.use("/api/posts/public", postsPublicRouter);
+
 app.use("/api/categories/public", categoriesPublicRouter);
 app.use("/api/menu/public", menuPublicRouter);
+app.use("/api/pages/public", pagesPublicRouter);
+app.use("/api/posts/public", postsPublicRouter);
+app.use("/api/search/public", searchPublicRouter);
 app.use("/api/settings/public", settingsPublicRouter);
 app.use("/api/tags/public", tagsPublicRouter);
-app.use("/api/pages/public", pagesPublicRouter);
-app.use("/api/search/public", searchPublicRouter);
-
 // Aplicar el middleware de autenticación a todas las rutas
 // Middleware global de autenticación (debe ir después de todos los routers públicos, solo una vez)
 app.use(requireAuth);
 // Rutas protegidas
-app.use("/api/posts", postsRouter);
-app.use("/api/cms-posts", cmsPostsRouter); // Ruta para posts del CMS
-app.use("/api/cms-pages", cmsPagesRouter); // Ruta para pages del CMS
-app.use("/api/categories", categoriesRouter);
-app.use("/api/blogs", blogsRouter);
-app.use("/api/pages", pagesRouter);
-app.use("/api/menu", menuRouter);
-app.use("/api/stats", statsRouter); // Rutas de estadísticas
-app.use("/api/series", seriesRouter); // Ruta para series
-app.use("/api/users", userProfileRouter);
-app.use("/api/profile-picture-test", profilePictureTestRouter); // Ruta para imágenes de perfil
-app.use("/api/comments", commentsRouter);
 app.use("/api", statsRouter);
+app.use("/api/blogs", blogsRouter);
+app.use("/api/categories", categoriesRouter);
+app.use("/api/cms-pages", cmsPagesRouter); // Ruta para pages del CMS
+app.use("/api/cms-posts", cmsPostsRouter); // Ruta para posts del CMS
+app.use("/api/comments", commentsRouter);
 app.use("/api/media", mediaRouter); // Rutas de medios
+app.use("/api/menu", menuRouter);
+app.use("/api/pages", pagesRouter);
+app.use("/api/posts", postsRouter);
+app.use("/api/profile-picture-test", profilePictureTestRouter); // Ruta para imágenes de perfil
+app.use("/api/series", seriesRouter); // Ruta para series
 app.use("/api/settings", settingsRouter); // Rutas de configuraciones
+app.use("/api/stats", statsRouter); // Rutas de estadísticas
+app.use("/api/users", userProfileRouter);
 
 app.use("/api/subscriptions", subscriptionsRouter); // Añadir rutas de suscripciones
 app.use("/api/payments", paymentRouter); // Añadir rutas de pagos
