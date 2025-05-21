@@ -22,7 +22,7 @@ export const getPublicTags = async (req, res) => {
         slug: true,
         _count: {
           select: {
-            posts: true,
+            postTags: true,
           },
         },
       },
@@ -36,7 +36,7 @@ export const getPublicTags = async (req, res) => {
       id: tag.id,
       name: tag.name,
       slug: tag.slug,
-      posts_count: tag._count.posts,
+      posts_count: tag._count.postTags,
     }));
 
     res.json({ data: formattedTags });
@@ -66,43 +66,29 @@ export const getPostsByTag = async (req, res) => {
         },
       },
       include: {
-        posts: {
-          where: {
-            status: "PUBLISHED",
-            publishedAt: {
-              lte: new Date(),
-            },
-          },
+        postTags: {
           include: {
-            author: {
-              select: {
-                id: true,
-                name: true,
-                picture: true,
+            post: {
+              where: {
+                status: "PUBLISHED",
+                publishedAt: { lte: new Date() },
               },
-            },
-            category: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
+              include: {
+                author: {
+                  select: { id: true, name: true, picture: true },
+                },
+                category: {
+                  select: { id: true, name: true, slug: true },
+                },
               },
             },
           },
-          orderBy: {
-            publishedAt: "desc",
-          },
-          skip: (page - 1) * perPage,
-          take: perPage,
         },
         _count: {
           select: {
-            posts: {
+            postTags: {
               where: {
-                status: "PUBLISHED",
-                publishedAt: {
-                  lte: new Date(),
-                },
+                post: { status: "PUBLISHED", publishedAt: { lte: new Date() } },
               },
             },
           },
@@ -114,13 +100,19 @@ export const getPostsByTag = async (req, res) => {
       return res.status(404).json({ error: "Etiqueta no encontrada" });
     }
 
-    const totalPosts = tag._count.posts;
+    // Extraer los posts publicados de los postTags
+    const posts = tag.postTags
+      .map(pt => pt.post)
+      .filter(post => post && post.status === "PUBLISHED" && post.publishedAt && new Date(post.publishedAt) <= new Date());
+
+    const totalPosts = tag._count.postTags;
     const totalPages = Math.ceil(totalPosts / perPage);
+    const paginatedPosts = posts.slice((page - 1) * perPage, (page) * perPage);
 
     res.json({
       data: {
         ...tag,
-        posts: tag.posts,
+        posts: paginatedPosts,
         pagination: {
           total: totalPosts,
           current_page: page,
