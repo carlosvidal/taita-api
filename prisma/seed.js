@@ -196,6 +196,59 @@ async function main() {
   ]);
   console.log({ posts });
 
+  // 5. Crear tags de ejemplo y asociar a posts
+  const tagData = [
+    { name: "Ejemplo", slug: "ejemplo" },
+    { name: "Tendencias", slug: "tendencias" },
+    { name: "Noticias", slug: "noticias" },
+    { name: "Vida", slug: "vida" },
+    { name: "Tech", slug: "tech" }
+  ];
+
+  // Crear tags (upsert)
+  const tags = [];
+  for (const t of tagData) {
+    let tag = await prisma.tag.upsert({
+      where: { tag_slug_blog_id_unique: { slug: t.slug, blogId: blog.id } },
+      update: { name: t.name },
+      create: {
+        name: t.name,
+        slug: t.slug,
+        blogId: blog.id
+      }
+    });
+    tags.push(tag);
+  }
+  console.log({ tags });
+
+  // Asociar tags a posts (al menos uno por post)
+  const postTagPairs = [
+    // Primer post: Ejemplo, Tech
+    { postId: posts[0].id, tagSlugs: ["ejemplo", "tech"] },
+    // Segundo post: Tendencias, Vida
+    { postId: posts[1].id, tagSlugs: ["tendencias", "vida"] },
+    // Tercer post: Noticias
+    { postId: posts[2].id, tagSlugs: ["noticias"] },
+    // Cuarto post: Vida, Ejemplo
+    { postId: posts[3].id, tagSlugs: ["vida", "ejemplo"] },
+    // Quinto post: Tech
+    { postId: posts[4].id, tagSlugs: ["tech"] },
+  ];
+
+  for (const pair of postTagPairs) {
+    for (const slug of pair.tagSlugs) {
+      const tag = tags.find(t => t.slug === slug);
+      if (tag) {
+        await prisma.postTag.upsert({
+          where: { postId_tagId: { postId: pair.postId, tagId: tag.id } },
+          update: {},
+          create: { postId: pair.postId, tagId: tag.id }
+        });
+      }
+    }
+  }
+  console.log("Tags asociados a posts");
+
   // Crear páginas
   const pages = await Promise.all([
     prisma.page.upsert({
