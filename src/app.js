@@ -7,26 +7,31 @@ import { PrismaClient } from "@prisma/client";
 import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcryptjs";
 import cors from "cors";
-import categoriesRouter from "./routes/categories.js";
-import categoriesPublicRouter from "./routes/categories-public.js";
-import postsRouter from "./routes/posts.js";
-import postsPublicRouter from "./routes/posts-public.js";
-import cmsPostsRouter from "./routes/cmsPosts.js";
-import cmsPagesRouter from "./routes/cmsPages.js";
-import pagesRouter from "./routes/pages.js";
-import menuRouter from "./routes/menu.js";
-import menuPublicRouter from "./routes/menu-public.js";
-import statsRouter from "./routes/stats.js";
 import authRouter from "./routes/auth.js";
-import mediaRouter from "./routes/media.js";
-import settingsRouter from "./routes/settings.js";
-import settingsPublicRouter from "./routes/settings-public.js";
+import authenticateToken from "./middleware/authenticateToken.js";
 import blogsRouter from "./routes/blogs.js";
-import userProfileRouter from "./routes/userProfile.js";
-import seriesRouter from "./routes/series.js";
-import profilePictureTestRouter from "./routes/profilePictureTest.js";
+import categoriesPublicRouter from "./routes/categories-public.js";
+import categoriesRouter from "./routes/categories.js";
+import cmsPagesRouter from "./routes/cmsPages.js";
+import cmsPostsRouter from "./routes/cmsPosts.js";
 import commentsRouter from "./routes/comments.js";
 import emailsRouter from "./routes/emails.js";
+import mediaRouter from "./routes/media.js";
+import menuPublicRouter from "./routes/menu-public.js";
+import menuRouter from "./routes/menu.js";
+import pagesRouter from "./routes/pages.js";
+import passwordRouter from "./routes/password.js";
+import paymentRouter from "./routes/paymentRoutes.js";
+import postsPublicRouter from "./routes/posts-public.js";
+import postsRouter from "./routes/posts.js";
+import profilePictureTestRouter from "./routes/profilePictureTest.js";
+import seriesRouter from "./routes/series.js";
+import settingsPublicRouter from "./routes/settings-public.js";
+import settingsRouter from "./routes/settings.js";
+import statsRouter from "./routes/stats.js";
+import subscriptionsRouter from "./routes/subscriptions.js";
+import tagsPublicRouter from "./routes/tags-public.js";
+import userProfileRouter from "./routes/userProfile.js";
 import { addDebugRoutes } from "./controllers/commentsController.js";
 
 dotenv.config();
@@ -459,7 +464,10 @@ const dynamicCorsMiddleware = async (req, res, next) => {
       "Access-Control-Allow-Methods",
       "GET, PUT, POST, DELETE, PATCH, OPTIONS"
     );
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, x-tenant");
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, x-tenant"
+    );
     res.header("Access-Control-Allow-Credentials", "true");
 
     if (req.method === "OPTIONS") {
@@ -486,7 +494,10 @@ const dynamicCorsMiddleware = async (req, res, next) => {
         "Access-Control-Allow-Methods",
         "GET, PUT, POST, DELETE, PATCH, OPTIONS"
       );
-      res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, x-tenant");
+      res.header(
+        "Access-Control-Allow-Headers",
+        "Content-Type, Authorization, x-tenant"
+      );
       res.header("Access-Control-Allow-Credentials", "true");
 
       console.log(
@@ -693,11 +704,7 @@ app.use("/api/posts/public", postsPublicRouter); // Ruta pública para posts (si
 app.use("/api/categories/public", categoriesPublicRouter); // Ruta pública para categorías (sin autenticación)
 app.use("/api/menu/public", menuPublicRouter); // Ruta pública para menú (sin autenticación)
 app.use("/api/settings/public", settingsPublicRouter); // Ruta pública para configuración (sin autenticación)
-import tagsPublicRouter from "./routes/tags-public.js";
 app.use("/api/tags/public", tagsPublicRouter); // Ruta pública para tags (sin autenticación)
-
-// Importar el middleware de autenticación
-import authenticateToken from "./middleware/authenticateToken.js";
 
 // Middleware para verificar autenticación en rutas protegidas
 const requireAuth = (req, res, next) => {
@@ -709,23 +716,25 @@ const requireAuth = (req, res, next) => {
     "/api/menu/public",
     "/api/settings/public",
     "/api/pages/public",
-    "/api/pages2/public",
     "/api/search/public",
     "/uploads",
     "/api/password",
-    "/api/auth/login"
+    "/api/auth/login",
   ];
   // Debug: mostrar rutas públicas y la url solicitada
-  console.log('publicPaths:', publicPaths);
-  console.log('req.originalUrl:', req.originalUrl);
+  console.log("publicPaths:", publicPaths);
+  console.log("req.originalUrl:", req.originalUrl);
 
   // Verificar si la ruta actual está en la lista de rutas públicas (comparación robusta)
-  const isPublicPath = publicPaths.some((path) =>
-    req.originalUrl === path ||
-    req.originalUrl.startsWith(path + "/") ||
-    req.originalUrl.startsWith(path + "?")
+  const isPublicPath = publicPaths.some(
+    (path) =>
+      req.originalUrl === path ||
+      req.originalUrl.startsWith(path + "/") ||
+      req.originalUrl.startsWith(path + "?")
   );
-  console.log(`[requireAuth] originalUrl: ${req.originalUrl} | isPublicPath: ${isPublicPath}`);
+  console.log(
+    `[requireAuth] originalUrl: ${req.originalUrl} | isPublicPath: ${isPublicPath}`
+  );
 
   if (isPublicPath) {
     console.log(`Ruta pública detectada: ${req.originalUrl}`);
@@ -736,10 +745,21 @@ const requireAuth = (req, res, next) => {
   return authenticateToken(req, res, next);
 };
 
+// Importar y usar los nuevos endpoints públicos
+// Routers públicos (deben ir antes del middleware de autenticación)
+import pagesPublicRouter from "./routes/pages-public.js";
+import searchPublicRouter from "./routes/search-public.js";
+app.use("/api/posts/public", postsPublicRouter);
+app.use("/api/categories/public", categoriesPublicRouter);
+app.use("/api/menu/public", menuPublicRouter);
+app.use("/api/settings/public", settingsPublicRouter);
+app.use("/api/tags/public", tagsPublicRouter);
+app.use("/api/pages/public", pagesPublicRouter);
+app.use("/api/search/public", searchPublicRouter);
+
 // Aplicar el middleware de autenticación a todas las rutas
 // Middleware global de autenticación (debe ir después de todos los routers públicos, solo una vez)
 app.use(requireAuth);
-
 // Rutas protegidas
 app.use("/api/posts", postsRouter);
 app.use("/api/cms-posts", cmsPostsRouter); // Ruta para posts del CMS
@@ -757,32 +777,11 @@ app.use("/api", statsRouter);
 app.use("/api/media", mediaRouter); // Rutas de medios
 app.use("/api/settings", settingsRouter); // Rutas de configuraciones
 
-// Importar y usar los nuevos endpoints públicos
-// Routers públicos (deben ir antes del middleware de autenticación)
-import pagesPublicRouter from "./routes/pages-public.js";
-import searchPublicRouter from "./routes/search-public.js";
-import pages2PublicRouter from "./routes/pages2-public.js";
-app.use("/api/posts/public", postsPublicRouter);
-app.use("/api/categories/public", categoriesPublicRouter);
-app.use("/api/menu/public", menuPublicRouter);
-app.use("/api/settings/public", settingsPublicRouter);
-app.use("/api/tags/public", tagsPublicRouter);
-app.use("/api/pages/public", pagesPublicRouter);
-app.use("/api/pages2/public", pages2PublicRouter);
-app.use("/api/search/public", searchPublicRouter);
-
-// Middleware global de autenticación (debe ir después de todos los routers públicos)
-// Middleware global de autenticación (debe ir después de todos los routers públicos, solo una vez)
-app.use(requireAuth);
-
-// Importar y usar las nuevas rutas de suscripciones y pagos
-import subscriptionsRouter from "./routes/subscriptions.js";
-import paymentRouter from "./routes/paymentRoutes.js";
 app.use("/api/subscriptions", subscriptionsRouter); // Añadir rutas de suscripciones
 app.use("/api/payments", paymentRouter); // Añadir rutas de pagos
 
 // Importar y usar las nuevas rutas de recuperación de contraseña
-import passwordRouter from "./routes/password.js";
+
 app.use("/api/password", passwordRouter); // Añadir rutas de recuperación de contraseña
 
 // Ejecutar la función de corrección de la base de datos antes de iniciar el servidor
