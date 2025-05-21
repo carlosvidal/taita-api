@@ -137,8 +137,8 @@ router.get("/:slug", async (req, res) => {
 // Create page
 router.post("/", async (req, res) => {
   try {
-    const { title, slug, content, authorId, excerpt, status, image, imageId } =
-      req.body;
+    const { title, slug, content, authorId, excerpt, status, image, imageId, blogId } =
+      req.body; // Agregar blogId
     console.log("Creando nueva página:", req.body);
 
     // Convertir el status a mayúsculas para que coincida con el enum PublishStatus
@@ -152,7 +152,9 @@ router.post("/", async (req, res) => {
       excerpt,
       status: statusValue,
       author: { connect: { id: authorId } },
+      blogId, // Agregar blogId al objeto de datos
     };
+
 
     // Manejar la imagen si se proporciona
     if (image) {
