@@ -183,7 +183,11 @@ router.post("/", async (req, res) => {
 
     res.json(page);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error("Error completo al crear página:", error);
+    res.status(400).json({ 
+      error: error.message,
+      prisma: error // Devuelve el objeto completo para depuración
+    });
   }
 });
 
