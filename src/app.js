@@ -327,6 +327,12 @@ const corsOptions = {
     "http://localhost:5173",
     "http://localhost:3000",
     "http://192.168.3.115:3000",
+    "http://192.168.3.115:3001",
+    "http://192.168.3.115:3002",
+    "http://192.168.3.115:3003",
+    "http://192.168.3.115:3004",
+    "http://192.168.3.115:3005",
+    "http://192.168.3.115:3006",
   ],
   methods: ["GET", "PUT", "POST", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: [
