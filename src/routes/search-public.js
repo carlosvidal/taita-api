@@ -70,7 +70,6 @@ router.get('/', async (req, res) => {
       where: {
         blogId: blog.id,
         status: 'PUBLISHED',
-        visible: true,
         OR: [
           { title: { contains: q, mode: 'insensitive' } },
           { content: { contains: q, mode: 'insensitive' } },

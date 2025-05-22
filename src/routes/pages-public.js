@@ -60,7 +60,6 @@ router.get("/:slug", async (req, res) => {
         blogId: blog.id,
         slug,
         status: 'PUBLISHED',
-        visible: true,
       },
     });
     if (!page) return res.status(404).json({ error: "Página no encontrada" });
