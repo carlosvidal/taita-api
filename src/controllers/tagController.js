@@ -4,7 +4,6 @@ const prisma = new PrismaClient();
 // Obtener todos los tags públicos
 export const getPublicTags = async (req, res) => {
   try {
-    // Obtener tenant desde query o header (igual que posts-public.js)
     const tenant = req.query.tenant || req.headers['x-taita-tenant'];
     if (!tenant) {
       return res.status(400).json({ error: "El parámetro 'tenant' es requerido" });
@@ -29,16 +28,13 @@ export const getPublicTags = async (req, res) => {
         name: "asc",
       },
     });
-
-    // Formatear la respuesta para incluir el conteo de posts
-    const formattedTags = tags.map((tag) => ({
+    // Respuesta plana (array)
+    res.json(tags.map(tag => ({
       id: tag.id,
       name: tag.name,
       slug: tag.slug,
       posts_count: tag._count.postTags,
-    }));
-
-    res.json({ data: formattedTags });
+    })));
   } catch (error) {
     console.error("Error al obtener los tags:", error);
     res.status(500).json({ error: "Error al cargar las etiquetas" });
@@ -67,40 +63,36 @@ export const getPostsByTag = async (req, res) => {
       include: {
         postTags: {
           include: {
-            post: {
-              include: {
-                author: { select: { id: true, name: true, picture: true } },
-                category: { select: { id: true, name: true, slug: true } },
-              }
-            }
-          }
-        }
-      }
+            post: true,
+          },
+        },
+      },
     });
 
     if (!tag) {
-      return res.status(404).json({ error: "Etiqueta no encontrada" });
+      return res.status(404).json({ error: "Tag not found" });
     }
 
-    // Filtrar solo posts publicados y paginar
+    // Filtrar solo posts publicados
     const publishedPosts = tag.postTags
       .map(pt => pt.post)
-      .filter(post => post && post.status === "PUBLISHED" && post.publishedAt && new Date(post.publishedAt) <= new Date());
+      .filter(post => post && post.status === 'PUBLISHED');
 
     const totalPosts = publishedPosts.length;
     const totalPages = Math.ceil(totalPosts / perPage);
     const paginatedPosts = publishedPosts.slice((page - 1) * perPage, page * perPage);
 
     res.json({
-      data: {
-        ...tag,
-        posts: paginatedPosts,
-        pagination: {
-          total: totalPosts,
-          current_page: page,
-          last_page: totalPages,
-          per_page: perPage,
-        },
+      id: tag.id,
+      name: tag.name,
+      slug: tag.slug,
+      posts_count: tag.postTags.length,
+      posts: paginatedPosts,
+      pagination: {
+        total: totalPosts,
+        current_page: page,
+        last_page: totalPages,
+        per_page: perPage,
       },
     });
   } catch (error) {
