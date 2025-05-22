@@ -13,25 +13,17 @@ router.get("/", async (req, res) => {
     // Extraer subdominio y dominio de múltiples fuentes
     let subdomain = "";
     let domain = "";
-    // Normalizar tenant/subdomain
     let tenant = req.query.tenant || req.headers["x-tenant"];
     if (tenant) {
       subdomain = tenant;
       console.log("Usando tenant:", tenant);
-    }
-
-    // Priorizar el header X-Taita-Subdomain si está presente
-    if (req.headers["x-taita-subdomain"]) {
+    } else if (req.headers["x-taita-subdomain"]) {
       subdomain = req.headers["x-taita-subdomain"];
       console.log("Usando subdominio del header X-Taita-Subdomain:", subdomain);
-    }
-    // Si no hay header, intentar obtenerlo de los query params
-    else if (req.query.subdomain) {
+    } else if (req.query.subdomain) {
       subdomain = req.query.subdomain;
       console.log("Usando subdominio de query param:", subdomain);
-    }
-    // Como última opción, intentar extraerlo del host
-    else if (host) {
+    } else if (host) {
       // Manejar casos especiales como localhost o IP
       if (host.includes("localhost") || host.includes("127.0.0.1")) {
         subdomain = "demo"; // Usar un subdominio por defecto para desarrollo local
@@ -170,19 +162,17 @@ router.get("/:slug", async (req, res) => {
     // Extraer subdominio y dominio de múltiples fuentes
     let subdomain = "";
     let domain = "";
-
-    // Priorizar el header X-Taita-Subdomain si está presente
-    if (req.headers["x-taita-subdomain"]) {
+    let tenant = req.query.tenant || req.headers["x-tenant"];
+    if (tenant) {
+      subdomain = tenant;
+      console.log("Usando tenant:", tenant);
+    } else if (req.headers["x-taita-subdomain"]) {
       subdomain = req.headers["x-taita-subdomain"];
       console.log("Usando subdominio del header X-Taita-Subdomain:", subdomain);
-    }
-    // Si no hay header, intentar obtenerlo de los query params
-    else if (req.query.subdomain) {
+    } else if (req.query.subdomain) {
       subdomain = req.query.subdomain;
       console.log("Usando subdominio de query param:", subdomain);
-    }
-    // Como última opción, intentar extraerlo del host
-    else if (host) {
+    } else if (host) {
       // Manejar casos especiales como localhost o IP
       if (host.includes("localhost") || host.includes("127.0.0.1")) {
         subdomain = "demo"; // Usar un subdominio por defecto para desarrollo local
