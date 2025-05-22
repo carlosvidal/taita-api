@@ -69,7 +69,7 @@ router.get('/', async (req, res) => {
     const pages = await prisma.page.findMany({
       where: {
         blogId: blog.id,
-        published: true,
+        status: 'PUBLISHED',
         visible: true,
         OR: [
           { title: { contains: q, mode: 'insensitive' } },

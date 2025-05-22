@@ -59,7 +59,7 @@ router.get("/:slug", async (req, res) => {
       where: {
         blogId: blog.id,
         slug,
-        published: true,
+        status: 'PUBLISHED',
         visible: true,
       },
     });
