@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 // Obtener todos los tags públicos
 export const getPublicTags = async (req, res) => {
   try {
-    // Estandarización: obtener tenant desde query o header
+    // Obtener tenant desde query o header (igual que posts-public.js)
     const tenant = req.query.tenant || req.headers['x-taita-tenant'];
     if (!tenant) {
       return res.status(400).json({ error: "El parámetro 'tenant' es requerido" });

@@ -7,40 +7,17 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const { q = "" } = req.query;
-    // Lógica robusta de extracción de subdominio (igual que posts-public.js)
-    const host = req.headers.host || '';
-    let subdomain = '';
-    let domain = '';
-    if (req.headers['x-taita-subdomain']) {
-      subdomain = req.headers['x-taita-subdomain'];
-    } else if (req.query.subdomain) {
-      subdomain = req.query.subdomain;
-    } else if (host) {
-      if (host.includes('localhost') || host.includes('127.0.0.1')) {
-        subdomain = 'demo';
-      } else {
-        const parts = host.split('.');
-        if (parts.length >= 3 && parts[0] !== 'www') {
-          subdomain = parts[0];
-          domain = parts.slice(1).join('.');
-        } else if (parts.length === 2) {
-          domain = host;
-          subdomain = 'default';
-        } else if (parts[0] === 'www' && parts.length >= 3) {
-          domain = parts.slice(1).join('.');
-          subdomain = 'default';
-        }
-      }
-    }
-    if (!subdomain) {
-      subdomain = 'demo';
+    // Obtener tenant desde query o header (igual que posts-public.js)
+    const tenant = req.query.tenant || req.headers['x-taita-tenant'];
+    if (!tenant) {
+      return res.status(400).json({ error: "El parámetro 'tenant' es requerido" });
     }
     // Buscar el blog correspondiente al tenant
     const blog = await prisma.blog.findFirst({
       where: {
         OR: [
-          { subdomain: subdomain },
-          { domain: subdomain },
+          { subdomain: tenant },
+          { domain: tenant },
         ],
       },
       select: { id: true },
