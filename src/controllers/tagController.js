@@ -4,16 +4,15 @@ const prisma = new PrismaClient();
 // Obtener todos los tags públicos
 export const getPublicTags = async (req, res) => {
   try {
-    const { subdomain } = req.query;
-
-    if (!subdomain) {
-      return res.status(400).json({ error: "Subdominio es requerido" });
+    // Estandarización: obtener tenant desde query o header
+    const tenant = req.query.tenant || req.headers['x-taita-tenant'];
+    if (!tenant) {
+      return res.status(400).json({ error: "El parámetro 'tenant' es requerido" });
     }
-
     const tags = await prisma.tag.findMany({
       where: {
         blog: {
-          OR: [{ subdomain: subdomain }, { domain: subdomain }],
+          OR: [{ subdomain: tenant }, { domain: tenant }],
         },
       },
       select: {
@@ -50,19 +49,19 @@ export const getPublicTags = async (req, res) => {
 export const getPostsByTag = async (req, res) => {
   try {
     const { slug } = req.params;
-    const { subdomain } = req.query;
+    const tenant = req.query.tenant || req.headers['x-taita-tenant'];
     const page = parseInt(req.query.page) || 1;
     const perPage = parseInt(req.query.per_page) || 10;
 
-    if (!subdomain) {
-      return res.status(400).json({ error: "Subdominio es requerido" });
+    if (!tenant) {
+      return res.status(400).json({ error: "El parámetro 'tenant' es requerido" });
     }
 
     const tag = await prisma.tag.findFirst({
       where: {
         slug,
         blog: {
-          OR: [{ subdomain: subdomain }, { domain: subdomain }],
+          OR: [{ subdomain: tenant }, { domain: tenant }],
         },
       },
       include: {
