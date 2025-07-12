@@ -54,10 +54,20 @@ const uploadImage = async (req, res) => {
     }
 
     // Obtener información del blog desde la autenticación
+    console.log('req.user:', req.user);
+    console.log('req.body:', req.body);
+    
     const blogId = req.user?.blogId || req.body.blogId;
+    console.log('blogId extraído:', blogId);
+    
     if (!blogId) {
       return res.status(400).json({ 
-        error: "Blog ID es requerido" 
+        error: "Blog ID es requerido",
+        debug: {
+          userBlogId: req.user?.blogId,
+          bodyBlogId: req.body.blogId,
+          user: req.user
+        }
       });
     }
 
@@ -66,12 +76,22 @@ const uploadImage = async (req, res) => {
     let variants = {};
 
     // Intentar usar Cloudinary primero
-    if (cloudinaryService.isConfigured()) {
+    console.log('Verificando configuración de Cloudinary...');
+    const isCloudinaryConfigured = cloudinaryService.isConfigured();
+    console.log('Cloudinary configurado:', isCloudinaryConfigured);
+    console.log('Variables de entorno:', {
+      CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME ? 'SET' : 'MISSING',
+      CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY ? 'SET' : 'MISSING',
+      CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET ? 'SET' : 'MISSING'
+    });
+    
+    if (isCloudinaryConfigured) {
       try {
         console.log('Subiendo a Cloudinary...');
         
         // Generar un public ID único
         const uniqueId = generateUniqueFilename(originalname);
+        console.log('Public ID generado:', uniqueId);
         
         uploadResult = await cloudinaryService.uploadImage(buffer, {
           folder: 'taita-blog',
@@ -83,13 +103,25 @@ const uploadImage = async (req, res) => {
         finalPath = uploadResult.url;
         variants = uploadResult.variants;
         
-        console.log('Imagen subida a Cloudinary exitosamente:', uploadResult.publicId);
+        console.log('Imagen subida a Cloudinary exitosamente:', {
+          publicId: uploadResult.publicId,
+          url: uploadResult.url,
+          format: uploadResult.format,
+          bytes: uploadResult.bytes
+        });
         
       } catch (cloudinaryError) {
-        console.error('Error al subir a Cloudinary, usando almacenamiento local:', cloudinaryError);
+        console.error('Error al subir a Cloudinary:', {
+          message: cloudinaryError.message,
+          stack: cloudinaryError.stack,
+          name: cloudinaryError.name
+        });
+        console.log('Fallando a almacenamiento local...');
         // Fallar a almacenamiento local si Cloudinary falla
         uploadResult = null;
       }
+    } else {
+      console.log('Cloudinary no configurado, usando almacenamiento local directamente...');
     }
 
     // Fallback a almacenamiento local si Cloudinary no está configurado o falla

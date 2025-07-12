@@ -14,9 +14,12 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     console.log('Intentando login para:', email);
     
-    // Buscar el usuario en la base de datos
+    // Buscar el usuario en la base de datos incluyendo su blog
     const user = await prisma.admin.findUnique({
-      where: { email }
+      where: { email },
+      include: {
+        blog: true
+      }
     });
     console.log('Usuario encontrado:', user ? { id: user.id, email: user.email, password: user.password } : null);
     let passwordMatch = false;
@@ -27,9 +30,19 @@ router.post('/login', async (req, res) => {
     
     // Verificar si el usuario existe y la contraseña es correcta (bcrypt)
     if (user && passwordMatch) {
-      // Generar un JWT
+      // Generar un JWT incluyendo blogId
+      const tokenPayload = { 
+        id: user.id, 
+        uuid: user.uuid, 
+        email: user.email, 
+        role: user.role,
+        blogId: user.blog?.id || null
+      };
+      
+      console.log('Token payload:', tokenPayload);
+      
       const token = jwt.sign(
-        { id: user.id, uuid: user.uuid, email: user.email, role: user.role },
+        tokenPayload,
         JWT_SECRET,
         { expiresIn: '7d' }
       );
