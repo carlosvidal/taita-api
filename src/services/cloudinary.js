@@ -2,12 +2,23 @@ import { v2 as cloudinary } from 'cloudinary';
 import sharp from 'sharp';
 import { Readable } from 'stream';
 
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+// Configure Cloudinary - ensure configuration happens at runtime
+const configureCloudinary = () => {
+  if (!cloudinary.config().cloud_name) {
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+    
+    // Log configuration status for debugging
+    console.log('Cloudinary configured with:', {
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? 'SET' : 'MISSING',
+      api_key: process.env.CLOUDINARY_API_KEY ? 'SET' : 'MISSING',
+      api_secret: process.env.CLOUDINARY_API_SECRET ? 'SET' : 'MISSING'
+    });
+  }
+};
 
 /**
  * Upload image to Cloudinary with optimizations
@@ -21,6 +32,17 @@ cloudinary.config({
  */
 export const uploadImage = async (fileBuffer, options = {}) => {
   try {
+    // Ensure Cloudinary is configured
+    configureCloudinary();
+    
+    console.log('Verificando configuración de Cloudinary...');
+    console.log('Variables de entorno:', {
+      CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME ? 'SET' : 'MISSING',
+      CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY ? 'SET' : 'MISSING', 
+      CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET ? 'SET' : 'MISSING'
+    });
+    console.log('Cloudinary configurado:', isConfigured());
+    
     const {
       folder = 'taita-blog',
       publicId,
@@ -136,6 +158,9 @@ export const uploadImage = async (fileBuffer, options = {}) => {
  */
 export const deleteImage = async (publicId) => {
   try {
+    // Ensure Cloudinary is configured
+    configureCloudinary();
+    
     const result = await cloudinary.uploader.destroy(publicId);
     return {
       success: result.result === 'ok',
@@ -192,6 +217,9 @@ export const getResponsiveUrls = (publicId) => {
  * @returns {boolean} Configuration status
  */
 export const isConfigured = () => {
+  // Ensure configuration is attempted first
+  configureCloudinary();
+  
   return !!(
     process.env.CLOUDINARY_CLOUD_NAME &&
     process.env.CLOUDINARY_API_KEY &&
