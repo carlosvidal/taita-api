@@ -1,7 +1,7 @@
 import express from "express";
 import multer from "multer";
 import { PrismaClient } from "@prisma/client";
-import { uploadImage, getAllMedia, deleteMedia } from "../controllers/mediaController.js";
+import { uploadImage, getMedia, deleteMedia } from "../controllers/mediaController.js";
 
 const prisma = new PrismaClient();
 
@@ -44,7 +44,7 @@ const upload = multer({
 router.post("/upload", upload.single('image'), handleMulterError, uploadImage);
 
 // Ruta para obtener todas las imágenes
-router.get("/", getAllMedia);
+router.get("/", getMedia);
 
 // Ruta para eliminar una imagen
 router.delete("/:id", deleteMedia);
