@@ -12,6 +12,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log('=== LOGIN V2.0 - FIXED VERSION ===');
     console.log('Intentando login para:', email);
     
     // Buscar el usuario en la base de datos incluyendo su blog
