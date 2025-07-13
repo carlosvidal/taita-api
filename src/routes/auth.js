@@ -39,7 +39,8 @@ router.post('/login', async (req, res) => {
         blogId: user.blog?.id || null
       };
       
-      console.log('Token payload:', tokenPayload);
+      console.log('Token payload (NEW VERSION):', tokenPayload);
+      console.log('User blog details:', user.blog);
       
       const token = jwt.sign(
         tokenPayload,

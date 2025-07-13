@@ -189,6 +189,14 @@ const uploadImage = async (req, res) => {
     }
 
     // Guardar información en la base de datos
+    console.log('Datos para crear media:', {
+      blogId: parseInt(blogId),
+      blogIdType: typeof blogId,
+      filename: path.basename(finalPath),
+      entityType,
+      cloudinaryId: uploadResult.cloudinaryId || null
+    });
+    
     const mediaRecord = await prisma.media.create({
       data: {
         uuid: uuidv4(),
