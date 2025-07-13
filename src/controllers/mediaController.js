@@ -270,8 +270,10 @@ const uploadImage = async (req, res) => {
  */
 const getMedia = async (req, res) => {
   try {
+    console.log('=== getMedia called ===');
     const { page = 1, limit = 20, entityType } = req.query;
     let blogId = req.user?.blogId;
+    console.log('Initial blogId from token:', blogId);
 
     // WORKAROUND: Si no hay blogId en el token, buscar el blog del usuario
     if (!blogId && req.user?.id) {
@@ -316,7 +318,10 @@ const getMedia = async (req, res) => {
 
     const total = await prisma.media.count({ where });
 
-    res.json({
+    console.log('processedMedia:', processedMedia);
+    console.log('total:', total);
+
+    const response = {
       success: true,
       data: processedMedia,
       pagination: {
@@ -325,12 +330,17 @@ const getMedia = async (req, res) => {
         total,
         pages: Math.ceil(total / limit)
       }
-    });
+    };
+
+    console.log('getMedia response:', JSON.stringify(response, null, 2));
+    res.json(response);
 
   } catch (error) {
     console.error('Error en getMedia:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ 
-      error: "Error interno del servidor al obtener medios" 
+      error: "Error interno del servidor al obtener medios",
+      details: error.message
     });
   }
 };
