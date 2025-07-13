@@ -57,19 +57,40 @@ const uploadImage = async (req, res) => {
     console.log('req.user:', req.user);
     console.log('req.body:', req.body);
     
-    const blogId = req.user?.blogId || req.body.blogId;
-    console.log('blogId extraído:', blogId);
+    let blogId = req.user?.blogId || req.body.blogId;
+    console.log('blogId extraído del token:', blogId);
+    
+    // WORKAROUND: Si no hay blogId en el token, buscar el blog del usuario
+    if (!blogId && req.user?.id) {
+      console.log('blogId no encontrado en token, buscando en DB...');
+      try {
+        const userWithBlog = await prisma.admin.findUnique({
+          where: { id: req.user.id },
+          include: { blog: true }
+        });
+        
+        if (userWithBlog?.blog) {
+          blogId = userWithBlog.blog.id;
+          console.log('blogId encontrado en DB:', blogId);
+        }
+      } catch (dbError) {
+        console.error('Error buscando blog del usuario:', dbError);
+      }
+    }
     
     if (!blogId) {
       return res.status(400).json({ 
-        error: "Blog ID es requerido",
+        error: "Blog ID es requerido - usuario no tiene blog asociado",
         debug: {
           userBlogId: req.user?.blogId,
           bodyBlogId: req.body.blogId,
+          userId: req.user?.id,
           user: req.user
         }
       });
     }
+    
+    console.log('blogId final a usar:', blogId);
 
     let uploadResult;
     let finalPath;
@@ -250,7 +271,23 @@ const uploadImage = async (req, res) => {
 const getMedia = async (req, res) => {
   try {
     const { page = 1, limit = 20, entityType } = req.query;
-    const blogId = req.user?.blogId;
+    let blogId = req.user?.blogId;
+
+    // WORKAROUND: Si no hay blogId en el token, buscar el blog del usuario
+    if (!blogId && req.user?.id) {
+      try {
+        const userWithBlog = await prisma.admin.findUnique({
+          where: { id: req.user.id },
+          include: { blog: true }
+        });
+        
+        if (userWithBlog?.blog) {
+          blogId = userWithBlog.blog.id;
+        }
+      } catch (dbError) {
+        console.error('Error buscando blog del usuario en getMedia:', dbError);
+      }
+    }
 
     if (!blogId) {
       return res.status(400).json({ error: "Blog ID es requerido" });
@@ -304,7 +341,23 @@ const getMedia = async (req, res) => {
 const deleteMedia = async (req, res) => {
   try {
     const { id } = req.params;
-    const blogId = req.user?.blogId;
+    let blogId = req.user?.blogId;
+
+    // WORKAROUND: Si no hay blogId en el token, buscar el blog del usuario
+    if (!blogId && req.user?.id) {
+      try {
+        const userWithBlog = await prisma.admin.findUnique({
+          where: { id: req.user.id },
+          include: { blog: true }
+        });
+        
+        if (userWithBlog?.blog) {
+          blogId = userWithBlog.blog.id;
+        }
+      } catch (dbError) {
+        console.error('Error buscando blog del usuario en deleteMedia:', dbError);
+      }
+    }
 
     if (!blogId) {
       return res.status(400).json({ error: "Blog ID es requerido" });
@@ -385,7 +438,23 @@ const deleteMedia = async (req, res) => {
 const getMediaById = async (req, res) => {
   try {
     const { id } = req.params;
-    const blogId = req.user?.blogId;
+    let blogId = req.user?.blogId;
+
+    // WORKAROUND: Si no hay blogId en el token, buscar el blog del usuario
+    if (!blogId && req.user?.id) {
+      try {
+        const userWithBlog = await prisma.admin.findUnique({
+          where: { id: req.user.id },
+          include: { blog: true }
+        });
+        
+        if (userWithBlog?.blog) {
+          blogId = userWithBlog.blog.id;
+        }
+      } catch (dbError) {
+        console.error('Error buscando blog del usuario en getMediaById:', dbError);
+      }
+    }
 
     const media = await prisma.media.findFirst({
       where: {
