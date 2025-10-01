@@ -27,7 +27,7 @@ router.get('/', authenticateUser, async (req, res) => {
         where: { blogId: blogId },
         include: {
           _count: {
-            select: { posts: true }
+            select: { postTags: true }
           }
         },
         orderBy: { name: 'asc' }
@@ -37,7 +37,7 @@ router.get('/', authenticateUser, async (req, res) => {
       tags = await prisma.tag.findMany({
         include: {
           _count: {
-            select: { posts: true }
+            select: { postTags: true }
           }
         },
         orderBy: { name: 'asc' }
@@ -47,7 +47,7 @@ router.get('/', authenticateUser, async (req, res) => {
     // Mapear para incluir postCount en el nivel raíz
     const tagsWithCount = tags.map(tag => ({
       ...tag,
-      postCount: tag._count.posts
+      postCount: tag._count.postTags
     }));
 
     res.json(tagsWithCount);
@@ -63,12 +63,19 @@ router.get('/:id', async (req, res) => {
       where: { id: parseInt(req.params.id) },
       include: {
         _count: {
-          select: { posts: true }
+          select: { postTags: true }
         }
       }
     });
     if (!tag) return res.status(404).json({ error: 'Tag not found' });
-    res.json(tag);
+
+    // Incluir postCount
+    const tagWithCount = {
+      ...tag,
+      postCount: tag._count.postTags
+    };
+
+    res.json(tagWithCount);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
