@@ -31,6 +31,7 @@ import settingsRouter from "./routes/settings.js";
 import statsRouter from "./routes/stats.js";
 import subscriptionsRouter from "./routes/subscriptions.js";
 import tagsPublicRouter from "./routes/tags-public.js";
+import tagsRouter from "./routes/tags.js";
 import userProfileRouter from "./routes/userProfile.js";
 import { addDebugRoutes } from "./controllers/commentsController.js";
 
@@ -775,6 +776,7 @@ app.use("/api/profile-picture-test", profilePictureTestRouter); // Ruta para im�
 app.use("/api/series", seriesRouter); // Ruta para series
 app.use("/api/settings", settingsRouter); // Rutas de configuraciones
 app.use("/api/stats", statsRouter); // Rutas de estadísticas
+app.use("/api/tags", tagsRouter); // Rutas de tags
 app.use("/api/users", userProfileRouter);
 
 app.use("/api/subscriptions", subscriptionsRouter); // Añadir rutas de suscripciones
