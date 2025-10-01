@@ -9,8 +9,22 @@ import { authenticateUser } from '../middleware/authMiddleware.js';
 router.get('/', authenticateUser, async (req, res) => {
   try {
     let categories;
-    if (req.user.role === 'SUPER_ADMIN') {
+    let blogId = null;
+
+    // Si se proporciona blogId en query params, usarlo
+    if (req.query.blogId) {
+      blogId = parseInt(req.query.blogId);
+    } else if (req.user.role !== 'SUPER_ADMIN') {
+      // Si no es SUPER_ADMIN, buscar su blog
+      const blog = await prisma.blog.findUnique({ where: { adminId: req.user.id }, select: { id: true } });
+      if (!blog) return res.json([]);
+      blogId = blog.id;
+    }
+
+    // Si tenemos blogId, filtrar por ese blog
+    if (blogId) {
       categories = await prisma.category.findMany({
+        where: { blogId: blogId },
         include: {
           _count: {
             select: { posts: true }
@@ -19,11 +33,8 @@ router.get('/', authenticateUser, async (req, res) => {
         orderBy: { name: 'asc' }
       });
     } else {
-      // Buscar blog del usuario
-      const blog = await prisma.blog.findUnique({ where: { adminId: req.user.id }, select: { id: true } });
-      if (!blog) return res.json([]);
+      // SUPER_ADMIN sin blogId específico - devolver todas (caso edge)
       categories = await prisma.category.findMany({
-        where: { blogId: blog.id },
         include: {
           _count: {
             select: { posts: true }
