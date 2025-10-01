@@ -357,7 +357,7 @@ router.get("/uuid/:uuid", authenticateUser, async (req, res) => {
 // Create post
 router.post("/", authenticateUser, async (req, res) => {
   try {
-    const { title, content, excerpt, slug, status, categoryId, blogId } =
+    const { title, content, excerpt, slug, status, categoryId, blogId, image, imageId } =
       req.body;
 
     // Validar que el blog exista
@@ -390,6 +390,8 @@ router.post("/", authenticateUser, async (req, res) => {
         categoryId: Number(categoryId),
         authorId: req.user.id,
         publishedAt: status === "PUBLISHED" ? new Date() : null,
+        image: image || null,
+        imageId: imageId ? Number(imageId) : null,
       },
     });
 
@@ -404,7 +406,7 @@ router.post("/", authenticateUser, async (req, res) => {
 router.patch("/:id", authenticateUser, async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, content, excerpt, slug, status, categoryId } = req.body;
+    const { title, content, excerpt, slug, status, categoryId, image, imageId, removeImage } = req.body;
 
     // Verificar si el post existe
     const existingPost = await prisma.post.findUnique({
@@ -415,21 +417,34 @@ router.patch("/:id", authenticateUser, async (req, res) => {
       return res.status(404).json({ error: "Post not found" });
     }
 
+    // Preparar datos para actualizar
+    const updateData = {
+      ...(title !== undefined && { title }),
+      ...(content !== undefined && { content }),
+      ...(excerpt !== undefined && { excerpt }),
+      ...(slug !== undefined && { slug }),
+      ...(status !== undefined && { status }),
+      ...(categoryId !== undefined && { categoryId: Number(categoryId) }),
+      ...(status === "PUBLISHED" && !existingPost.publishedAt && { publishedAt: new Date() }),
+    };
+
+    // Manejar imagen
+    if (removeImage) {
+      updateData.image = null;
+      updateData.imageId = null;
+    } else {
+      if (image !== undefined) {
+        updateData.image = image;
+      }
+      if (imageId !== undefined) {
+        updateData.imageId = imageId ? Number(imageId) : null;
+      }
+    }
+
     // Actualizar el post
     const updatedPost = await prisma.post.update({
       where: { id: Number(id) },
-      data: {
-        title,
-        content,
-        excerpt,
-        slug,
-        status,
-        categoryId: Number(categoryId),
-        publishedAt:
-          status === "PUBLISHED" && !existingPost.publishedAt
-            ? new Date()
-            : existingPost.publishedAt,
-      },
+      data: updateData,
     });
 
     res.json(updatedPost);

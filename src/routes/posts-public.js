@@ -3,6 +3,19 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 const router = express.Router();
 
+// Helper function para mapear posts al formato esperado por el frontend
+const mapPostToPublicFormat = (post) => {
+  return {
+    ...post,
+    featured_image: post.image, // Mapear 'image' a 'featured_image'
+    author_id: post.authorId,
+    category_id: post.categoryId,
+    published_at: post.publishedAt,
+    updated_at: post.updatedAt,
+    created_at: post.createdAt,
+  };
+};
+
 // Endpoint público para obtener posts publicados (para el frontend público)
 router.get("/", async (req, res) => {
   try {
@@ -143,7 +156,10 @@ router.get("/", async (req, res) => {
     console.log(
       `Encontrados ${posts.length} posts publicados para el blog ${blog.name}`
     );
-    res.json(posts);
+
+    // Mapear posts al formato esperado por el frontend
+    const mappedPosts = posts.map(mapPostToPublicFormat);
+    res.json(mappedPosts);
   } catch (error) {
     console.error("Error al obtener posts públicos:", error);
     res.status(500).json({ error: error.message });
@@ -274,7 +290,9 @@ router.get("/:slug", async (req, res) => {
       return res.status(404).json({ error: "Post not found" });
     }
 
-    res.json(post);
+    // Mapear el post al formato esperado por el frontend
+    const mappedPost = mapPostToPublicFormat(post);
+    res.json(mappedPost);
   } catch (error) {
     console.error("Error al obtener post público por slug:", error);
     res.status(500).json({ error: error.message });
