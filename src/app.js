@@ -758,14 +758,12 @@ import pagesPublicRouter from "./routes/pages-public.js";
 import searchPublicRouter from "./routes/search-public.js";
 import seriesPublicRouter from "./routes/series-public.js";
 
-app.use("/api/categories/public", categoriesPublicRouter);
-app.use("/api/menu/public", menuPublicRouter);
+// Las rutas públicas ya están registradas arriba (líneas 709-713)
+// Solo necesitamos registrar las nuevas rutas públicas aquí
 app.use("/api/pages/public", pagesPublicRouter);
-app.use("/api/posts/public", postsPublicRouter);
 app.use("/api/search/public", searchPublicRouter);
 app.use("/api/series/public", seriesPublicRouter);
-app.use("/api/settings/public", settingsPublicRouter);
-app.use("/api/tags/public", tagsPublicRouter);
+
 // Aplicar el middleware de autenticación a todas las rutas
 // Middleware global de autenticación (debe ir después de todos los routers públicos, solo una vez)
 app.use(requireAuth);

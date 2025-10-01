@@ -11,22 +11,14 @@ router.get('/', authenticateUser, async (req, res) => {
     let categories;
     let blogId = null;
 
-    console.log('[Categories API] Request query:', req.query);
-    console.log('[Categories API] User:', { id: req.user.id, role: req.user.role });
-
     // Si se proporciona blogId en query params, usarlo
     if (req.query.blogId) {
       blogId = parseInt(req.query.blogId);
-      console.log('[Categories API] Using blogId from query:', blogId);
     } else if (req.user.role !== 'SUPER_ADMIN') {
       // Si no es SUPER_ADMIN, buscar su blog
       const blog = await prisma.blog.findUnique({ where: { adminId: req.user.id }, select: { id: true } });
-      if (!blog) {
-        console.log('[Categories API] No blog found for user');
-        return res.json([]);
-      }
+      if (!blog) return res.json([]);
       blogId = blog.id;
-      console.log('[Categories API] Using blogId from user blog:', blogId);
     }
 
     // Si tenemos blogId, filtrar por ese blog
@@ -40,7 +32,6 @@ router.get('/', authenticateUser, async (req, res) => {
         },
         orderBy: { name: 'asc' }
       });
-      console.log('[Categories API] Found', categories.length, 'categories for blogId', blogId);
     } else {
       // SUPER_ADMIN sin blogId específico - devolver todas (caso edge)
       categories = await prisma.category.findMany({
@@ -51,7 +42,6 @@ router.get('/', authenticateUser, async (req, res) => {
         },
         orderBy: { name: 'asc' }
       });
-      console.log('[Categories API] Found', categories.length, 'categories (all blogs)');
     }
 
     // Mapear para incluir postCount en el nivel raíz
@@ -60,11 +50,8 @@ router.get('/', authenticateUser, async (req, res) => {
       postCount: cat._count.posts
     }));
 
-    console.log('[Categories API] Returning categories:', categoriesWithCount.map(c => ({ id: c.id, name: c.name, blogId: c.blogId })));
-
     res.json(categoriesWithCount);
   } catch (error) {
-    console.error('[Categories API] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
