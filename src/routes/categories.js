@@ -11,14 +11,22 @@ router.get('/', authenticateUser, async (req, res) => {
     let categories;
     let blogId = null;
 
+    console.log('[Categories GET /] Query params:', req.query);
+    console.log('[Categories GET /] User:', { id: req.user.id, role: req.user.role });
+
     // Si se proporciona blogId en query params, usarlo
     if (req.query.blogId) {
       blogId = parseInt(req.query.blogId);
+      console.log('[Categories GET /] Using blogId from query:', blogId);
     } else if (req.user.role !== 'SUPER_ADMIN') {
       // Si no es SUPER_ADMIN, buscar su blog
       const blog = await prisma.blog.findUnique({ where: { adminId: req.user.id }, select: { id: true } });
-      if (!blog) return res.json([]);
+      if (!blog) {
+        console.log('[Categories GET /] No blog found for user');
+        return res.json([]);
+      }
       blogId = blog.id;
+      console.log('[Categories GET /] Using blogId from user:', blogId);
     }
 
     // Si tenemos blogId, filtrar por ese blog
@@ -32,6 +40,8 @@ router.get('/', authenticateUser, async (req, res) => {
         },
         orderBy: { name: 'asc' }
       });
+      console.log('[Categories GET /] Found', categories.length, 'categories for blogId', blogId);
+      console.log('[Categories GET /] Category IDs:', categories.map(c => ({ id: c.id, name: c.name, slug: c.slug })));
     } else {
       // SUPER_ADMIN sin blogId específico - devolver todas (caso edge)
       categories = await prisma.category.findMany({
@@ -42,6 +52,8 @@ router.get('/', authenticateUser, async (req, res) => {
         },
         orderBy: { name: 'asc' }
       });
+      console.log('[Categories GET /] Found', categories.length, 'categories (all blogs)');
+      console.log('[Categories GET /] Category IDs:', categories.map(c => ({ id: c.id, name: c.name, blogId: c.blogId })));
     }
 
     // Mapear para incluir postCount en el nivel raíz
@@ -50,8 +62,11 @@ router.get('/', authenticateUser, async (req, res) => {
       postCount: cat._count.posts
     }));
 
+    console.log('[Categories GET /] Sending', categoriesWithCount.length, 'categories to client');
+
     res.json(categoriesWithCount);
   } catch (error) {
+    console.error('[Categories GET /] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
