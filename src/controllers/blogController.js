@@ -29,6 +29,22 @@ export const createBlog = async (req, res) => {
         adminId: ownerId,
       },
     });
+
+    // Crear automáticamente la categoría "Sin categoría" para el nuevo blog
+    try {
+      await prisma.category.create({
+        data: {
+          name: 'Sin categoría',
+          slug: 'sin-categoria',
+          blogId: blog.id
+        }
+      });
+      console.log(`✅ Categoría "Sin categoría" creada automáticamente para el blog ${blog.name}`);
+    } catch (categoryError) {
+      console.error('⚠️ Error al crear categoría "Sin categoría":', categoryError);
+      // No interrumpir el flujo si falla la creación de la categoría
+    }
+
     res.status(201).json(blog);
   } catch (error) {
     console.error(error);
