@@ -83,7 +83,7 @@ router.get("/", authenticateUser, async (req, res) => {
           },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { updatedAt: "desc" },
     });
 
     console.log(
