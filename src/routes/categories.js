@@ -11,7 +11,12 @@ router.get('/', authenticateUser, async (req, res) => {
     let categories;
     if (req.user.role === 'SUPER_ADMIN') {
       categories = await prisma.category.findMany({
-        include: { posts: true }
+        include: {
+          _count: {
+            select: { posts: true }
+          }
+        },
+        orderBy: { name: 'asc' }
       });
     } else {
       // Buscar blog del usuario
@@ -19,10 +24,22 @@ router.get('/', authenticateUser, async (req, res) => {
       if (!blog) return res.json([]);
       categories = await prisma.category.findMany({
         where: { blogId: blog.id },
-        include: { posts: true }
+        include: {
+          _count: {
+            select: { posts: true }
+          }
+        },
+        orderBy: { name: 'asc' }
       });
     }
-    res.json(categories);
+
+    // Mapear para incluir postCount en el nivel raíz
+    const categoriesWithCount = categories.map(cat => ({
+      ...cat,
+      postCount: cat._count.posts
+    }));
+
+    res.json(categoriesWithCount);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
