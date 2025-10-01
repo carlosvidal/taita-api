@@ -723,6 +723,7 @@ const requireAuth = (req, res, next) => {
     "/api/settings/public",
     "/api/pages/public",
     "/api/search/public",
+    "/api/series/public",
     "/uploads",
     "/api/password",
     "/api/auth/login",
@@ -755,12 +756,14 @@ const requireAuth = (req, res, next) => {
 // Routers públicos (deben ir antes del middleware de autenticación)
 import pagesPublicRouter from "./routes/pages-public.js";
 import searchPublicRouter from "./routes/search-public.js";
+import seriesPublicRouter from "./routes/series-public.js";
 
 app.use("/api/categories/public", categoriesPublicRouter);
 app.use("/api/menu/public", menuPublicRouter);
 app.use("/api/pages/public", pagesPublicRouter);
 app.use("/api/posts/public", postsPublicRouter);
 app.use("/api/search/public", searchPublicRouter);
+app.use("/api/series/public", seriesPublicRouter);
 app.use("/api/settings/public", settingsPublicRouter);
 app.use("/api/tags/public", tagsPublicRouter);
 // Aplicar el middleware de autenticación a todas las rutas
