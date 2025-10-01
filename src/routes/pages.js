@@ -191,8 +191,8 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Update page by UUID
-router.put("/uuid/:uuid", async (req, res) => {
+// Update page by UUID - handler function
+const updatePageByUuid = async (req, res) => {
   try {
     const {
       title,
@@ -208,31 +208,31 @@ router.put("/uuid/:uuid", async (req, res) => {
     console.log("Actualizando página por UUID:", req.params.uuid, req.body);
 
     // Convertir el status a mayúsculas para que coincida con el enum PublishStatus
-    const statusValue = status ? status.toUpperCase() : "DRAFT";
+    const statusValue = status ? status.toUpperCase() : undefined;
 
-    // Preparar los datos para la actualización
-    const updateData = {
-      title,
-      slug,
-      content,
-      excerpt,
-      status: statusValue,
-      ...(authorId && { author: { connect: { id: authorId } } }),
-    };
+    // Preparar los datos para la actualización (solo incluir campos definidos)
+    const updateData = {};
+    if (title !== undefined) updateData.title = title;
+    if (slug !== undefined) updateData.slug = slug;
+    if (content !== undefined) updateData.content = content;
+    if (excerpt !== undefined) updateData.excerpt = excerpt;
+    if (statusValue !== undefined) updateData.status = statusValue;
+    if (authorId) updateData.author = { connect: { id: authorId } };
 
     // Manejar la imagen
-    if (image !== undefined) {
-      console.log("Actualizando imagen de la página:", image);
-      updateData.image = image;
-
-      if (imageId) {
-        updateData.imageId = parseInt(imageId);
-        console.log("ID de imagen convertido a entero:", updateData.imageId);
-      }
-    } else if (removeImage) {
+    if (removeImage) {
       console.log("Eliminando imagen de la página");
       updateData.image = null;
       updateData.imageId = null;
+    } else {
+      if (image !== undefined) {
+        console.log("Actualizando imagen de la página:", image);
+        updateData.image = image;
+      }
+      if (imageId !== undefined) {
+        updateData.imageId = imageId ? parseInt(imageId) : null;
+        console.log("ID de imagen convertido a entero:", updateData.imageId);
+      }
     }
 
     console.log("Datos finales para actualizar:", updateData);
@@ -256,7 +256,11 @@ router.put("/uuid/:uuid", async (req, res) => {
     console.error("Error al actualizar página por UUID:", error);
     res.status(400).json({ error: error.message });
   }
-});
+};
+
+// Update page by UUID (PUT and PATCH)
+router.put("/uuid/:uuid", updatePageByUuid);
+router.patch("/uuid/:uuid", updatePageByUuid);
 
 // Update page by ID (para compatibilidad)
 router.put("/:id", async (req, res) => {
