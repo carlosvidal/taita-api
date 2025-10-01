@@ -250,12 +250,13 @@ router.post("/", async (req, res) => {
 });
 
 // Update series by UUID
-router.put("/uuid/:uuid", async (req, res) => {
+// Handler function for updating series by UUID
+const updateSeriesByUuid = async (req, res) => {
   try {
     const { title, description, slug, authorId, coverImage } = req.body;
     console.log("Actualizando serie por UUID:", req.params.uuid);
     console.log("Datos recibidos:", req.body);
-    
+
     // Primero, obtener la serie actual para asegurarnos de no perder datos
     const existingSeries = await prisma.series.findUnique({
       where: { uuid: req.params.uuid },
@@ -263,31 +264,31 @@ router.put("/uuid/:uuid", async (req, res) => {
         author: true
       }
     });
-    
+
     if (!existingSeries) {
       return res.status(404).json({ error: "Serie no encontrada" });
     }
-    
+
     // Preparar los datos para la actualización
     const updateData = {};
-    
+
     // Actualizar campos básicos solo si se proporcionan
     if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.description = description || "";
     if (slug !== undefined) updateData.slug = slug;
-    
+
     // Manejar la relación del autor si se proporciona
     if (authorId) {
       updateData.author = { connect: { id: parseInt(authorId) } };
     }
-    
+
     // Manejar la imagen de portada
     if (coverImage !== undefined) {
       updateData.coverImage = coverImage;
     }
-    
+
     console.log("Datos finales para actualizar:", JSON.stringify(updateData, null, 2));
-    
+
     const series = await prisma.series.update({
       where: { uuid: req.params.uuid },
       data: updateData,
@@ -300,13 +301,13 @@ router.put("/uuid/:uuid", async (req, res) => {
         }
       }
     });
-    
+
     console.log("Serie actualizada exitosamente:", {
       id: series.id,
       uuid: series.uuid,
       title: series.title
     });
-    
+
     res.json(series);
   } catch (error) {
     console.error("Error al actualizar serie:", error);
@@ -315,20 +316,24 @@ router.put("/uuid/:uuid", async (req, res) => {
       code: error.code,
       meta: error.meta
     });
-    
+
     // Proporcionar un mensaje de error más detallado
     let errorMessage = error.message;
     if (error.meta && error.meta.field_name) {
       errorMessage = `Error en el campo ${error.meta.field_name}: ${error.message}`;
     }
-    
-    res.status(400).json({ 
+
+    res.status(400).json({
       error: errorMessage,
       details: error.meta,
       code: error.code
     });
   }
-});
+};
+
+// Update series by UUID (PUT and PATCH)
+router.put("/uuid/:uuid", updateSeriesByUuid);
+router.patch("/uuid/:uuid", updateSeriesByUuid);
 
 // Delete series by UUID
 router.delete("/uuid/:uuid", async (req, res) => {
