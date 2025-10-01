@@ -724,13 +724,11 @@ const requireAuth = (req, res, next) => {
     "/api/pages/public",
     "/api/search/public",
     "/api/series/public",
+    "/api/tags/public",
     "/uploads",
     "/api/password",
     "/api/auth/login",
   ];
-  // Debug: mostrar rutas públicas y la url solicitada
-  console.log("publicPaths:", publicPaths);
-  console.log("req.originalUrl:", req.originalUrl);
 
   // Verificar si la ruta actual está en la lista de rutas públicas (comparación robusta)
   const isPublicPath = publicPaths.some(
@@ -739,16 +737,11 @@ const requireAuth = (req, res, next) => {
       req.originalUrl.startsWith(path + "/") ||
       req.originalUrl.startsWith(path + "?")
   );
-  console.log(
-    `[requireAuth] originalUrl: ${req.originalUrl} | isPublicPath: ${isPublicPath}`
-  );
 
   if (isPublicPath) {
-    console.log(`Ruta pública detectada: ${req.originalUrl}`);
     return next();
   }
 
-  console.log(`Verificando autenticación para ruta: ${req.path}`);
   return authenticateToken(req, res, next);
 };
 
