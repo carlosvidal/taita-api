@@ -86,6 +86,7 @@ model Blog {
   template  String?  // Plantilla visual
   googleAnalyticsId String? // ID de Google Analytics
   socialNetworks Json? // Redes sociales (JSON)
+  timezone  String?  @default("America/Lima") // Zona horaria del blog
 
   plan      Plan     @default(FREE)
   subscriptionId String? // ID de la suscripción en el sistema de pagos

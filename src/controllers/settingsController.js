@@ -22,6 +22,7 @@ const getSettings = async (req, res) => {
       domain,
       googleAnalyticsId,
       socialNetworks,
+      timezone,
     } = blog;
     res.json({
       title,
@@ -31,6 +32,7 @@ const getSettings = async (req, res) => {
       domain,
       googleAnalyticsId,
       socialNetworks,
+      timezone: timezone || 'America/Lima',
     });
   } catch (error) {
     res.status(500).json({ error: "Error al obtener configuraciones" });
@@ -53,6 +55,7 @@ const updateSettings = async (req, res) => {
     domain,
     googleAnalyticsId,
     socialNetworks,
+    timezone,
   } = req.body;
 
   if (template && !["default", "minimal", "professional"].includes(template)) {
@@ -74,17 +77,24 @@ const updateSettings = async (req, res) => {
     }
 
     // Actualiza los campos de configuración
+    const updateData = {
+      title,
+      description,
+      language,
+      template,
+      domain,
+      googleAnalyticsId,
+      socialNetworks,
+    };
+
+    // Solo agregar timezone si se proporciona
+    if (timezone !== undefined) {
+      updateData.timezone = timezone;
+    }
+
     const updated = await prisma.blog.update({
       where: { id: blog.id },
-      data: {
-        title,
-        description,
-        language,
-        template,
-        domain,
-        googleAnalyticsId,
-        socialNetworks,
-      },
+      data: updateData,
     });
     console.log("Configuraciones actualizadas:", updated);
     res.json(updated);
