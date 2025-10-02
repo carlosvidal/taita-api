@@ -63,8 +63,38 @@ export const createPost = async (req, res) => {
           }
           categoryId = category.id;
         }
-        
-        // 3. Crear el post con la relación al autor
+
+        // 3. Procesar tags si se proporcionan (crear los que no existan)
+        let tagIds = [];
+        if (req.body.tagNames && Array.isArray(req.body.tagNames) && req.body.tagNames.length > 0) {
+          for (const tagName of req.body.tagNames) {
+            const trimmedName = tagName.trim();
+            if (!trimmedName) continue;
+
+            // Generar slug para el tag
+            const tagSlug = trimmedName
+              .toLowerCase()
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/(^-+|-+$)/g, '')
+              .substring(0, 50);
+
+            // Buscar o crear el tag
+            const tag = await tx.tag.upsert({
+              where: { slug: tagSlug },
+              update: {},
+              create: {
+                name: trimmedName,
+                slug: tagSlug
+              }
+            });
+
+            tagIds.push(tag.id);
+          }
+        }
+
+        // 4. Crear el post con la relación al autor
         const newPost = await tx.post.create({
           data: {
             ...postData,
@@ -76,14 +106,21 @@ export const createPost = async (req, res) => {
               categories: {
                 connect: [{ id: categoryId }]
               }
+            } : {}),
+            // Conectar con los tags si existen
+            ...(tagIds.length > 0 ? {
+              tags: {
+                connect: tagIds.map(id => ({ id }))
+              }
             } : {})
           },
           include: {
             author: true,
-            categories: true
+            categories: true,
+            tags: true
           }
         });
-        
+
         return newPost;
       });
       
@@ -117,86 +154,140 @@ export const updatePost = async (req, res) => {
     const existingPost = await prisma.post.findUnique({
       where: { uuid: req.params.id },
       include: {
-        categories: true
+        categories: true,
+        tags: true
       }
     });
-    
+
     if (!existingPost) {
       return res.status(404).json({ error: "Post not found" });
     }
-    
-    // Preparar los datos para la actualización
-    const updateData = {
-      title: req.body.title,
-      content: req.body.content,
-      excerpt: req.body.excerpt || "",
-      slug: req.body.slug || existingPost.slug,
-      status: req.body.status === "published" ? "PUBLISHED" : "DRAFT",
-      publishedAt: req.body.status === "published" && !existingPost.publishedAt ? new Date() : existingPost.publishedAt
-    };
-    
-    // Manejar la imagen si se proporciona
-    if (req.body.image) {
-      // Si la imagen es una URL completa, asumimos que es una imagen válida
-      updateData.image = req.body.image;
-      
-      // Si también se proporciona el ID de la imagen, lo guardamos
-      if (req.body.imageId) {
-        updateData.imageId = parseInt(req.body.imageId);
-      }
-    } else if (req.body.removeImage) {
-      // Si se solicita eliminar la imagen
-      updateData.image = null;
-      updateData.imageId = null;
-    }
-    
-    // Actualizar el post
-    const updatedPost = await prisma.post.update({
-      where: { uuid: req.params.id },
-      data: updateData,
-      include: {
-        author: true,
-        categories: true
-      }
-    });
-    
-    // Manejar categorías si se proporcionan
-    if (req.body.categories && Array.isArray(req.body.categories)) {
-      // Desconectar todas las categorías existentes
-      await prisma.post.update({
-        where: { id: updatedPost.id },
-        data: {
-          categories: {
-            disconnect: existingPost.categories.map(cat => ({ id: cat.id }))
-          }
+
+    // Usar transacción para manejar tags y actualización del post
+    const updatedPost = await prisma.$transaction(async (tx) => {
+      // Preparar los datos para la actualización
+      const updateData = {
+        title: req.body.title,
+        content: req.body.content,
+        excerpt: req.body.excerpt || "",
+        slug: req.body.slug || existingPost.slug,
+        status: req.body.status === "published" ? "PUBLISHED" : "DRAFT",
+        publishedAt: req.body.status === "published" && !existingPost.publishedAt ? new Date() : existingPost.publishedAt
+      };
+
+      // Manejar la imagen si se proporciona
+      if (req.body.image) {
+        updateData.image = req.body.image;
+        if (req.body.imageId) {
+          updateData.imageId = parseInt(req.body.imageId);
         }
-      });
-      
-      // Conectar las nuevas categorías
-      if (req.body.categories.length > 0) {
-        await prisma.post.update({
-          where: { id: updatedPost.id },
-          data: {
-            categories: {
-              connect: req.body.categories.map(catId => ({ id: parseInt(catId) }))
-            }
-          }
-        });
+      } else if (req.body.removeImage) {
+        updateData.image = null;
+        updateData.imageId = null;
       }
-      
-      // Obtener el post actualizado con las categorías
-      const postWithCategories = await prisma.post.findUnique({
-        where: { id: updatedPost.id },
+
+      // Procesar tags si se proporcionan
+      let tagIds = [];
+      if (req.body.tagNames && Array.isArray(req.body.tagNames)) {
+        for (const tagName of req.body.tagNames) {
+          const trimmedName = tagName.trim();
+          if (!trimmedName) continue;
+
+          // Generar slug para el tag
+          const tagSlug = trimmedName
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-+|-+$)/g, '')
+            .substring(0, 50);
+
+          // Buscar o crear el tag
+          const tag = await tx.tag.upsert({
+            where: { slug: tagSlug },
+            update: {},
+            create: {
+              name: trimmedName,
+              slug: tagSlug
+            }
+          });
+
+          tagIds.push(tag.id);
+        }
+
+        // Desconectar todos los tags existentes
+        if (existingPost.tags.length > 0) {
+          await tx.post.update({
+            where: { id: existingPost.id },
+            data: {
+              tags: {
+                disconnect: existingPost.tags.map(tag => ({ id: tag.id }))
+              }
+            }
+          });
+        }
+
+        // Conectar los nuevos tags
+        if (tagIds.length > 0) {
+          updateData.tags = {
+            connect: tagIds.map(id => ({ id }))
+          };
+        }
+      }
+
+      // Actualizar el post
+      const post = await tx.post.update({
+        where: { uuid: req.params.id },
+        data: updateData,
         include: {
           author: true,
-          categories: true
+          categories: true,
+          tags: true
         }
       });
-      
-      console.log("Post actualizado exitosamente:", postWithCategories.id);
-      return res.status(200).json(postWithCategories);
-    }
-    
+
+      // Manejar categorías si se proporcionan
+      if (req.body.categories && Array.isArray(req.body.categories)) {
+        // Desconectar todas las categorías existentes
+        if (existingPost.categories.length > 0) {
+          await tx.post.update({
+            where: { id: post.id },
+            data: {
+              categories: {
+                disconnect: existingPost.categories.map(cat => ({ id: cat.id }))
+              }
+            }
+          });
+        }
+
+        // Conectar las nuevas categorías
+        if (req.body.categories.length > 0) {
+          await tx.post.update({
+            where: { id: post.id },
+            data: {
+              categories: {
+                connect: req.body.categories.map(catId => ({ id: parseInt(catId) }))
+              }
+            }
+          });
+        }
+
+        // Obtener el post actualizado con las categorías y tags
+        const postWithRelations = await tx.post.findUnique({
+          where: { id: post.id },
+          include: {
+            author: true,
+            categories: true,
+            tags: true
+          }
+        });
+
+        return postWithRelations;
+      }
+
+      return post;
+    });
+
     console.log("Post actualizado exitosamente:", updatedPost.id);
     return res.status(200).json(updatedPost);
   } catch (error) {
