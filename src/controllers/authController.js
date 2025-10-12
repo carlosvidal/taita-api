@@ -24,6 +24,9 @@ import { sendMail } from "../utils/mailer.js";
 async function verifyHcaptcha(token) {
   const secret = process.env.HCAPTCHA_SECRET_KEY;
 
+  console.log('[hCaptcha] Secret key present:', !!secret);
+  console.log('[hCaptcha] Token length:', token?.length);
+
   // If no secret key configured, allow test key to pass
   if (!secret || secret === '0x0000000000000000000000000000000000000000') {
     console.log('[hCaptcha] Using test mode - no verification');
@@ -38,20 +41,27 @@ async function verifyHcaptcha(token) {
       }
     });
 
+    console.log('[hCaptcha] Response:', response.data);
     return response.data.success;
   } catch (error) {
-    console.error('[hCaptcha] Verification error:', error);
+    console.error('[hCaptcha] Verification error:', error.response?.data || error.message);
     return false;
   }
 }
 
 export const requestOtp = async (req, res) => {
   const { email, captchaToken } = req.body;
+
+  console.log('[requestOtp] Request body:', { email, captchaToken: captchaToken ? 'present' : 'missing' });
+
   if (!email) return res.status(400).json({ error: "Email requerido" });
   if (!captchaToken) return res.status(400).json({ error: "Captcha requerido" });
 
   // Verify captcha
+  console.log('[requestOtp] Verifying captcha...');
   const captchaValid = await verifyHcaptcha(captchaToken);
+  console.log('[requestOtp] Captcha valid:', captchaValid);
+
   if (!captchaValid) {
     return res.status(400).json({ error: "Captcha inválido" });
   }
