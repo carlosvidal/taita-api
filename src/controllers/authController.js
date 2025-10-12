@@ -34,10 +34,14 @@ async function verifyHcaptcha(token) {
   }
 
   try {
-    const response = await axios.post('https://hcaptcha.com/siteverify', null, {
-      params: {
-        secret,
-        response: token
+    // hCaptcha requires form-urlencoded data
+    const params = new URLSearchParams();
+    params.append('secret', secret);
+    params.append('response', token);
+
+    const response = await axios.post('https://hcaptcha.com/siteverify', params, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
       }
     });
 
