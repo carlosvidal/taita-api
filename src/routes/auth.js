@@ -2,6 +2,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { requestOtp, verifyOtp, signup } from '../controllers/authController.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -77,23 +78,28 @@ router.post('/login', async (req, res) => {
 // Ruta para verificar el token
 router.get('/verify', (req, res) => {
   const authHeader = req.headers.authorization;
-  
+
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({
       success: false,
       error: 'No autorizado'
     });
   }
-  
+
   const token = authHeader.split(' ')[1];
-  
+
   // En un sistema real, verificarías la validez del token
   // Por ahora, simplemente asumimos que es válido si existe
-  
+
   return res.status(200).json({
     success: true,
     message: 'Token válido'
   });
 });
+
+// Signup flow routes
+router.post('/request-otp', requestOtp);
+router.post('/verify-otp', verifyOtp);
+router.post('/signup', signup);
 
 export default router;
