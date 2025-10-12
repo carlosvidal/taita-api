@@ -102,4 +102,25 @@ router.post('/request-otp', requestOtp);
 router.post('/verify-otp', verifyOtp);
 router.post('/signup', signup);
 
+// Check subdomain availability
+router.get('/check-subdomain/:subdomain', async (req, res) => {
+  try {
+    const { subdomain } = req.params;
+
+    if (!subdomain) {
+      return res.status(400).json({ error: 'Subdomain requerido' });
+    }
+
+    // Check if subdomain exists
+    const existingBlog = await prisma.blog.findFirst({
+      where: { subdomain }
+    });
+
+    return res.json({ available: !existingBlog });
+  } catch (error) {
+    console.error('Error checking subdomain:', error);
+    return res.status(500).json({ error: 'Error al verificar subdominio' });
+  }
+});
+
 export default router;
