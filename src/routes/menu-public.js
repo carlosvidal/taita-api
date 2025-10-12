@@ -6,14 +6,24 @@ const router = express.Router();
 // Endpoint público para obtener el menú (para el frontend público)
 router.get('/', async (req, res) => {
   try {
+    console.log('[menu-public] === REQUEST START ===');
+    console.log('[menu-public] Headers:', {
+      host: req.headers.host,
+      'x-taita-subdomain': req.headers['x-taita-subdomain'],
+      origin: req.headers.origin
+    });
+    console.log('[menu-public] Query params:', req.query);
+
     // Extraer subdominio y dominio igual que posts-public.js
     const host = req.headers.host || '';
     let subdomain = '';
     let domain = '';
     if (req.headers['x-taita-subdomain']) {
       subdomain = req.headers['x-taita-subdomain'];
+      console.log('[menu-public] Using subdomain from header:', subdomain);
     } else if (req.query.subdomain) {
       subdomain = req.query.subdomain;
+      console.log('[menu-public] Using subdomain from query:', subdomain);
     } else if (host) {
       if (host.includes('localhost') || host.includes('127.0.0.1')) {
         subdomain = 'demo';
@@ -66,9 +76,11 @@ router.get('/', async (req, res) => {
         }
       }
     });
-    
-    console.log(`Encontrados ${allMenuItems.length} ítems de menú para el blog ${blog.name}`);
-    
+
+    console.log(`[menu-public] Blog: ${blog.name} (ID: ${blog.id})`);
+    console.log(`[menu-public] Found ${allMenuItems.length} menu items`);
+    console.log(`[menu-public] Menu items raw data:`, JSON.stringify(allMenuItems, null, 2));
+
     // Construir la jerarquía de menús
     const buildMenuHierarchy = (items, parentId = null) => {
       return items
@@ -83,11 +95,11 @@ router.get('/', async (req, res) => {
           children: buildMenuHierarchy(items, item.id)
         }));
     };
-    
+
     const menuItems = buildMenuHierarchy(allMenuItems);
-    console.log(`Menú construido con ${menuItems.length} ítems de primer nivel`);
-    
-    console.log(`Encontrados ${menuItems.length} items de menú para el blog ${blog.name}`);
+    console.log(`[menu-public] Menu hierarchy built with ${menuItems.length} top-level items`);
+    console.log(`[menu-public] Final menu structure:`, JSON.stringify(menuItems, null, 2));
+
     res.json(menuItems);
   } catch (error) {
     console.error('Error al obtener menú público:', error);
