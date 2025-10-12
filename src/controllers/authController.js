@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import axios from "axios";
 import { isBurnerEmail, getEmailType, extractDomain } from "../utils/burnerEmailChecker.js";
 
 const prisma = new PrismaClient();
@@ -19,9 +20,41 @@ const otpStore = new Map(); // email -> { code, expiresAt, verified }
 
 import { sendMail } from "../utils/mailer.js";
 
+// Verify hCaptcha token
+async function verifyHcaptcha(token) {
+  const secret = process.env.HCAPTCHA_SECRET_KEY;
+
+  // If no secret key configured, allow test key to pass
+  if (!secret || secret === '0x0000000000000000000000000000000000000000') {
+    console.log('[hCaptcha] Using test mode - no verification');
+    return true;
+  }
+
+  try {
+    const response = await axios.post('https://hcaptcha.com/siteverify', null, {
+      params: {
+        secret,
+        response: token
+      }
+    });
+
+    return response.data.success;
+  } catch (error) {
+    console.error('[hCaptcha] Verification error:', error);
+    return false;
+  }
+}
+
 export const requestOtp = async (req, res) => {
-  const { email } = req.body;
+  const { email, captchaToken } = req.body;
   if (!email) return res.status(400).json({ error: "Email requerido" });
+  if (!captchaToken) return res.status(400).json({ error: "Captcha requerido" });
+
+  // Verify captcha
+  const captchaValid = await verifyHcaptcha(captchaToken);
+  if (!captchaValid) {
+    return res.status(400).json({ error: "Captcha inválido" });
+  }
 
   // Genera un OTP aleatorio de 6 dígitos
   const code = Math.floor(100000 + Math.random() * 900000).toString();
