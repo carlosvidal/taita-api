@@ -18,8 +18,13 @@ const getSettings = async (req, res) => {
     } else if (req.query.blogUuid) {
       blog = await prisma.blog.findFirst({ where: { uuid: req.query.blogUuid } });
     } else {
-      // Buscar el blog del usuario autenticado
-      blog = await prisma.blog.findFirst({ where: { adminId: req.user.id } });
+      // Si es SUPER_ADMIN y no especifica blog, buscar el primer blog disponible
+      if (req.user.role === "SUPER_ADMIN") {
+        blog = await prisma.blog.findFirst();
+      } else {
+        // Buscar el blog del usuario autenticado
+        blog = await prisma.blog.findFirst({ where: { adminId: req.user.id } });
+      }
     }
 
     if (!blog) return res.status(404).json({ error: "No se encontró el blog" });
@@ -83,14 +88,19 @@ const updateSettings = async (req, res) => {
     } else if (blogUuid) {
       blog = await prisma.blog.findFirst({ where: { uuid: blogUuid } });
     } else {
-      // Buscar el blog del usuario autenticado
-      blog = await prisma.blog.findFirst({ where: { adminId: req.user.id } });
+      // Si es SUPER_ADMIN y no especifica blog, buscar el primer blog disponible
+      if (req.user.role === "SUPER_ADMIN") {
+        blog = await prisma.blog.findFirst();
+      } else {
+        // Buscar el blog del usuario autenticado
+        blog = await prisma.blog.findFirst({ where: { adminId: req.user.id } });
+      }
     }
 
     if (!blog) return res.status(404).json({ error: "No se encontró el blog" });
 
-    // Verificar que el usuario sea el administrador del blog
-    if (blog.adminId !== req.user.id) {
+    // Verificar que el usuario sea el administrador del blog o SUPER_ADMIN
+    if (blog.adminId !== req.user.id && req.user.role !== "SUPER_ADMIN") {
       return res
         .status(403)
         .json({
