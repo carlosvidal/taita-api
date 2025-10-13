@@ -10,8 +10,18 @@ const getSettings = async (req, res) => {
   }
 
   try {
-    // Busca el primer blog (puedes personalizar el criterio si hay multi-tenant)
-    const blog = await prisma.blog.findFirst();
+    // Obtener el blogId del query o buscar el blog del usuario
+    let blog;
+
+    if (req.query.blogId) {
+      blog = await prisma.blog.findUnique({ where: { id: parseInt(req.query.blogId) } });
+    } else if (req.query.blogUuid) {
+      blog = await prisma.blog.findFirst({ where: { uuid: req.query.blogUuid } });
+    } else {
+      // Buscar el blog del usuario autenticado
+      blog = await prisma.blog.findFirst({ where: { adminId: req.user.id } });
+    }
+
     if (!blog) return res.status(404).json({ error: "No se encontró el blog" });
     // Devuelve solo los campos de configuración
     const {
@@ -56,6 +66,8 @@ const updateSettings = async (req, res) => {
     googleAnalyticsId,
     socialNetworks,
     timezone,
+    blogId,
+    blogUuid,
   } = req.body;
 
   if (template && !["default", "minimal", "professional"].includes(template)) {
@@ -63,8 +75,18 @@ const updateSettings = async (req, res) => {
   }
 
   try {
-    // Busca el primer blog (puedes personalizar el criterio si hay multi-tenant)
-    const blog = await prisma.blog.findFirst();
+    // Obtener el blogId del body o buscar el blog del usuario
+    let blog;
+
+    if (blogId) {
+      blog = await prisma.blog.findUnique({ where: { id: parseInt(blogId) } });
+    } else if (blogUuid) {
+      blog = await prisma.blog.findFirst({ where: { uuid: blogUuid } });
+    } else {
+      // Buscar el blog del usuario autenticado
+      blog = await prisma.blog.findFirst({ where: { adminId: req.user.id } });
+    }
+
     if (!blog) return res.status(404).json({ error: "No se encontró el blog" });
 
     // Verificar que el usuario sea el administrador del blog
