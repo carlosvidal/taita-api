@@ -37,12 +37,12 @@ RUN mkdir -p uploads uploads/profiles /uploads /uploads/profiles .data && \
 # Usar usuario no-root
 USER node
 
-# Exponer puerto
-EXPOSE 3001
+# Exponer puerto (por defecto 3000)
+EXPOSE 3000
 
 # Health check - aumentar start-period para dar tiempo a las migraciones
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+    CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Comando de inicio usando el entrypoint
 ENTRYPOINT ["/docker-entrypoint.sh"]
