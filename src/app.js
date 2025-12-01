@@ -531,6 +531,11 @@ const dynamicCorsMiddleware = async (req, res, next) => {
 app.use(dynamicCorsMiddleware);
 app.use(express.json());
 
+// Health check endpoint para Docker/Coolify
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 // Endpoint interno de verificación de emails
 app.use("/api/emails", emailsRouter);
 
