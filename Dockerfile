@@ -26,9 +26,9 @@ COPY --from=builder /app/prisma ./prisma
 # Copiar el código fuente
 COPY . .
 
-# Crear directorio para uploads
-RUN mkdir -p uploads && \
-    chown -R node:node /app
+# Crear directorios para uploads con permisos correctos
+RUN mkdir -p uploads uploads/profiles /uploads /uploads/profiles .data && \
+    chown -R node:node /app /uploads
 
 # Usar usuario no-root
 USER node
