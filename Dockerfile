@@ -26,6 +26,10 @@ COPY --from=builder /app/prisma ./prisma
 # Copiar el código fuente
 COPY . .
 
+# Copiar y dar permisos al script de entrypoint
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 # Crear directorios para uploads con permisos correctos
 RUN mkdir -p uploads uploads/profiles /uploads /uploads/profiles .data && \
     chown -R node:node /app /uploads
@@ -36,9 +40,9 @@ USER node
 # Exponer puerto
 EXPOSE 3001
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+# Health check - aumentar start-period para dar tiempo a las migraciones
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Comando de inicio
-CMD ["npm", "start"]
+# Comando de inicio usando el entrypoint
+ENTRYPOINT ["/docker-entrypoint.sh"]
