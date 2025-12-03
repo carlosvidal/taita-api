@@ -31,11 +31,17 @@ async function main() {
   let existingBlog = await prisma.blog.findFirst({
     where: { adminId: admin.id }
   });
+  console.log("Existing blog by adminId:", existingBlog);
 
   // También buscamos por subdomain para evitar conflictos
   let existingBlogBySubdomain = await prisma.blog.findFirst({
     where: { subdomain: "demo" }
   });
+  console.log("Existing blog by subdomain:", existingBlogBySubdomain);
+
+  // Buscar CUALQUIER blog que exista
+  let anyBlog = await prisma.blog.findMany();
+  console.log("All existing blogs:", anyBlog);
 
   let blog;
   if (existingBlog) {
