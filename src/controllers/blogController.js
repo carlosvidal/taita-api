@@ -14,12 +14,16 @@ export const createBlog = async (req, res) => {
     const { name, subdomain, domain, plan, adminId } = req.body;
     // Permitir que el admin global cree blogs para otros admins si se provee adminId, si no, usar el propio
     const ownerId = adminId || req.user.id;
-    // Validar que el admin no tenga ya un blog
-    const existing = await prisma.blog.findUnique({
-      where: { adminId: ownerId },
-    });
-    if (existing) {
-      return res.status(400).json({ error: "Este usuario ya tiene un blog." });
+
+    // Solo validar que ADMIN regular no tenga ya un blog
+    // SUPER_ADMIN puede crear múltiples blogs
+    if (req.user.role === "ADMIN") {
+      const existing = await prisma.blog.findUnique({
+        where: { adminId: ownerId },
+      });
+      if (existing) {
+        return res.status(400).json({ error: "Este usuario ya tiene un blog." });
+      }
     }
     const blog = await prisma.blog.create({
       data: {
