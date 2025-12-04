@@ -317,58 +317,54 @@ const app = express();
 const port = process.env.PORT || 3000;
 addDebugRoutes(app);
 
-// Configuración mejorada de CORS
-const corsOptions = {
-  origin: [
-    "*",
-    "https://taita.blog",
-    "https://www.taita.blog",
-    "https://demo.taita.blog",
-    "http://localhost:4321",
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "http://192.168.3.115:3000",
-    "http://192.168.3.115:3001",
-    "http://192.168.3.115:3002",
-    "http://192.168.3.115:3003",
-    "http://192.168.3.115:3004",
-    "http://192.168.3.115:3005",
-    "http://192.168.3.115:3006",
-  ],
-  methods: ["GET", "PUT", "POST", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "X-Taita-Subdomain",
-    "Accept",
-    "Origin",
-    "Referer",
-    "User-Agent",
-  ],
-  credentials: true,
-};
-
-app.use(cors(corsOptions));
-
-// Handler específico para preflight OPTIONS requests de subdominios
+// IMPORTANTE: Handler de CORS debe ser el PRIMER middleware, antes que todo lo demás
+// Handler universal para todas las requests (incluidas OPTIONS preflight)
 app.use((req, res, next) => {
-  if (req.method === 'OPTIONS') {
-    const origin = req.headers.origin || '';
-    console.log('[OPTIONS] Preflight request from:', origin);
+  const origin = req.headers.origin || '';
 
-    // Permitir cualquier subdominio de taita.blog
-    if (origin.endsWith('.taita.blog') || origin === 'https://taita.blog' || origin === 'https://www.taita.blog' || origin === 'https://cms.taita.blog') {
-      res.header('Access-Control-Allow-Origin', origin);
-      res.header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, PATCH, OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-tenant');
-      res.header('Access-Control-Allow-Credentials', 'true');
-      console.log('[OPTIONS] Allowing origin:', origin);
-      return res.sendStatus(200);
-    }
+  console.log(`[CORS] ${req.method} request from origin: ${origin}`);
+  console.log(`[CORS] Request path: ${req.path}`);
+  console.log(`[CORS] Headers:`, req.headers);
 
-    console.log('[OPTIONS] Origin not in whitelist, allowing anyway');
-    return res.sendStatus(200);
+  // Lista de orígenes permitidos
+  const allowedOrigins = [
+    'https://taita.blog',
+    'https://www.taita.blog',
+    'https://cms.taita.blog',
+    'https://backend.taita.blog',
+    'http://localhost:4321',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://192.168.3.115:3000',
+    'http://192.168.3.115:3001',
+    'http://192.168.3.115:3002',
+    'http://192.168.3.115:3003',
+    'http://192.168.3.115:3004',
+    'http://192.168.3.115:3005',
+    'http://192.168.3.115:3006',
+  ];
+
+  // Verificar si es un subdominio de taita.blog
+  const isTaitaSubdomain = origin.endsWith('.taita.blog') || allowedOrigins.includes(origin);
+
+  if (isTaitaSubdomain || origin.startsWith('http://localhost') || origin.startsWith('http://192.168')) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Taita-Subdomain, Accept, Origin, Referer, User-Agent, x-tenant');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Max-Age', '86400'); // 24 horas
+
+    console.log(`[CORS] ✅ Origin allowed: ${origin}`);
+  } else {
+    console.log(`[CORS] ⚠️ Origin not in whitelist: ${origin}`);
   }
+
+  // Si es un preflight OPTIONS request, responder inmediatamente
+  if (req.method === 'OPTIONS') {
+    console.log(`[CORS] ✅ Responding to OPTIONS preflight from: ${origin}`);
+    return res.status(204).send();
+  }
+
   next();
 });
 
