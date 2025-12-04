@@ -5,6 +5,10 @@ const prisma = new PrismaClient();
 // Crear un nuevo blog y asociar al admin
 export const createBlog = async (req, res) => {
   try {
+    console.log('[createBlog] Iniciando creación de blog');
+    console.log('[createBlog] User role:', req.user.role);
+    console.log('[createBlog] Request body:', req.body);
+
     // Permitir crear blogs a ADMIN y SUPER_ADMIN
     if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN") {
       return res
@@ -12,19 +16,30 @@ export const createBlog = async (req, res) => {
         .json({ error: "Solo el administrador puede crear blogs." });
     }
     const { name, subdomain, domain, plan, adminId } = req.body;
+
+    console.log('[createBlog] Datos extraídos:', { name, subdomain, domain, plan, adminId });
+
     // Permitir que el admin global cree blogs para otros admins si se provee adminId, si no, usar el propio
     const ownerId = adminId || req.user.id;
+
+    console.log('[createBlog] Owner ID:', ownerId);
 
     // Solo validar que ADMIN regular no tenga ya un blog
     // SUPER_ADMIN puede crear múltiples blogs
     if (req.user.role === "ADMIN") {
+      console.log('[createBlog] Verificando si ADMIN ya tiene blog...');
       const existing = await prisma.blog.findUnique({
         where: { adminId: ownerId },
       });
       if (existing) {
+        console.log('[createBlog] Usuario ya tiene un blog:', existing.id);
         return res.status(400).json({ error: "Este usuario ya tiene un blog." });
       }
+    } else {
+      console.log('[createBlog] SUPER_ADMIN puede crear múltiples blogs, saltando validación');
     }
+
+    console.log('[createBlog] Creando blog en la base de datos...');
     const blog = await prisma.blog.create({
       data: {
         name,
@@ -34,6 +49,8 @@ export const createBlog = async (req, res) => {
         adminId: ownerId,
       },
     });
+
+    console.log('[createBlog] Blog creado exitosamente:', blog.id);
 
     // Crear automáticamente la categoría "Sin categoría" para el nuevo blog
     try {
@@ -52,10 +69,24 @@ export const createBlog = async (req, res) => {
 
     res.status(201).json(blog);
   } catch (error) {
-    console.error(error);
+    console.error('[createBlog] Error al crear blog:', error);
+    console.error('[createBlog] Error name:', error.name);
+    console.error('[createBlog] Error message:', error.message);
+    console.error('[createBlog] Error stack:', error.stack);
+
+    // Si es un error de Prisma, incluir más detalles
+    if (error.code) {
+      console.error('[createBlog] Prisma error code:', error.code);
+      console.error('[createBlog] Prisma error meta:', error.meta);
+    }
+
     res
       .status(400)
-      .json({ error: "No se pudo crear el blog", details: error.message });
+      .json({
+        error: "No se pudo crear el blog",
+        details: error.message,
+        code: error.code || 'UNKNOWN'
+      });
   }
 };
 
