@@ -414,10 +414,22 @@ const dynamicCorsMiddleware = async (req, res, next) => {
 
   // Verificar si el origen está permitido
   const isAllowedOrigin =
-    !origin || // Permitir solicitudes sin origen (como desde Postman)
+    !origin || // Permitir solicitudes sin origen (desde proxy/Postman)
     isTaitaSubdomain(origin) ||
     devOrigins.includes(origin) ||
     mainDomains.includes(origin);
+
+  // Si no hay origin pero hay un Referer header, intentar extraer el origin
+  let effectiveOrigin = origin;
+  if (!origin && req.headers.referer) {
+    try {
+      const refererUrl = new URL(req.headers.referer);
+      effectiveOrigin = `${refererUrl.protocol}//${refererUrl.host}`;
+      console.log(`Usando Referer como origin: ${effectiveOrigin}`);
+    } catch (e) {
+      console.error("Error parsing referer:", e);
+    }
+  }
 
   console.log("Es subdominio de taita.blog:", isTaitaSubdomain(origin));
   console.log("Está en lista de desarrollo:", devOrigins.includes(origin));
@@ -426,6 +438,7 @@ const dynamicCorsMiddleware = async (req, res, next) => {
     mainDomains.includes(origin)
   );
   console.log("Origen permitido:", isAllowedOrigin);
+  console.log("Origen efectivo:", effectiveOrigin);
   console.log("==================================");
 
   // Si el origen está permitido, configurar los headers CORS
@@ -433,7 +446,7 @@ const dynamicCorsMiddleware = async (req, res, next) => {
     // No usar '*' cuando se usan credenciales
     // Usar el origen específico de la solicitud
     const allowOrigin =
-      origin || req.headers.origin || mainDomains[0] || "http://localhost:5173";
+      effectiveOrigin || origin || req.headers.origin || mainDomains[0] || "http://localhost:5173";
 
     console.log(`Configurando CORS para origen: ${allowOrigin}`);
 
