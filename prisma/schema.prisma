@@ -92,7 +92,7 @@ model Blog {
   subscriptionId String? // ID de la suscripción en el sistema de pagos
   subscriptionStatus String? // Estado de la suscripción: ACTIVE, CANCELED, PENDING, NONE
   nextPaymentDate DateTime? // Fecha del próximo pago
-  adminId   Int?   @unique
+  adminId   Int?   // Removido @unique para permitir múltiples blogs por admin
   admin     Admin? @relation(fields: [adminId], references: [id])
   posts     Post[]
   pages     Page[]

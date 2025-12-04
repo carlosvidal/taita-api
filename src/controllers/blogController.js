@@ -24,21 +24,8 @@ export const createBlog = async (req, res) => {
 
     console.log('[createBlog] Owner ID:', ownerId);
 
-    // Solo validar que ADMIN regular no tenga ya un blog
-    // SUPER_ADMIN puede crear múltiples blogs
-    if (req.user.role === "ADMIN") {
-      console.log('[createBlog] Verificando si ADMIN ya tiene blog...');
-      const existing = await prisma.blog.findUnique({
-        where: { adminId: ownerId },
-      });
-      if (existing) {
-        console.log('[createBlog] Usuario ya tiene un blog:', existing.id);
-        return res.status(400).json({ error: "Este usuario ya tiene un blog." });
-      }
-    } else {
-      console.log('[createBlog] SUPER_ADMIN puede crear múltiples blogs, saltando validación');
-    }
-
+    // Nota: Removida la validación de blog único por admin
+    // Ahora todos los admins (ADMIN y SUPER_ADMIN) pueden crear múltiples blogs
     console.log('[createBlog] Creando blog en la base de datos...');
     const blog = await prisma.blog.create({
       data: {
