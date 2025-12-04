@@ -743,11 +743,17 @@ app.use(express.static(path.join(__dirname, "../public")));
 app.use("/api/auth", authRouter); // Rutas de autenticación
 
 // Rutas de la API (las rutas públicas deben ir antes que las protegidas)
+// Registrar rutas públicas CON y SIN el prefijo /api para compatibilidad
 app.use("/api/posts/public", postsPublicRouter); // Ruta pública para posts (sin autenticación)
+app.use("/posts/public", postsPublicRouter); // Sin prefijo /api para frontend Nuxt
 app.use("/api/categories/public", categoriesPublicRouter); // Ruta pública para categorías (sin autenticación)
+app.use("/categories/public", categoriesPublicRouter); // Sin prefijo /api
 app.use("/api/menu/public", menuPublicRouter); // Ruta pública para menú (sin autenticación)
+app.use("/menu/public", menuPublicRouter); // Sin prefijo /api
 app.use("/api/settings/public", settingsPublicRouter); // Ruta pública para configuración (sin autenticación)
+app.use("/settings/public", settingsPublicRouter); // Sin prefijo /api
 app.use("/api/tags/public", tagsPublicRouter); // Ruta pública para tags (sin autenticación)
+app.use("/tags/public", tagsPublicRouter); // Sin prefijo /api
 
 // Middleware para verificar autenticación en rutas protegidas
 const requireAuth = (req, res, next) => {
@@ -755,13 +761,21 @@ const requireAuth = (req, res, next) => {
   const publicPaths = [
     "/api/auth",
     "/api/posts/public",
+    "/posts/public",
     "/api/categories/public",
+    "/categories/public",
     "/api/menu/public",
+    "/menu/public",
     "/api/settings/public",
+    "/settings/public",
     "/api/pages/public",
+    "/pages/public",
     "/api/search/public",
+    "/search/public",
     "/api/series/public",
+    "/series/public",
     "/api/tags/public",
+    "/tags/public",
     "/uploads",
     "/api/password",
     "/api/auth/login",
@@ -791,8 +805,11 @@ import seriesPublicRouter from "./routes/series-public.js";
 // Las rutas públicas ya están registradas arriba (líneas 709-713)
 // Solo necesitamos registrar las nuevas rutas públicas aquí
 app.use("/api/pages/public", pagesPublicRouter);
+app.use("/pages/public", pagesPublicRouter); // Sin prefijo /api
 app.use("/api/search/public", searchPublicRouter);
+app.use("/search/public", searchPublicRouter); // Sin prefijo /api
 app.use("/api/series/public", seriesPublicRouter);
+app.use("/series/public", seriesPublicRouter); // Sin prefijo /api
 
 // Aplicar el middleware de autenticación a todas las rutas
 // Middleware global de autenticación (debe ir después de todos los routers públicos, solo una vez)
