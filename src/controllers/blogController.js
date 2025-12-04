@@ -5,7 +5,8 @@ const prisma = new PrismaClient();
 // Crear un nuevo blog y asociar al admin
 export const createBlog = async (req, res) => {
   try {
-    if (req.user.role !== "ADMIN") {
+    // Permitir crear blogs a ADMIN y SUPER_ADMIN
+    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN") {
       return res
         .status(403)
         .json({ error: "Solo el administrador puede crear blogs." });
