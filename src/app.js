@@ -351,22 +351,25 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Handler específico para preflight OPTIONS requests de subdominios
-app.options('*', (req, res) => {
-  const origin = req.headers.origin || '';
-  console.log('[OPTIONS] Preflight request from:', origin);
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    const origin = req.headers.origin || '';
+    console.log('[OPTIONS] Preflight request from:', origin);
 
-  // Permitir cualquier subdominio de taita.blog
-  if (origin.endsWith('.taita.blog') || origin === 'https://taita.blog' || origin === 'https://www.taita.blog' || origin === 'https://cms.taita.blog') {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, PATCH, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-tenant');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    console.log('[OPTIONS] Allowing origin:', origin);
+    // Permitir cualquier subdominio de taita.blog
+    if (origin.endsWith('.taita.blog') || origin === 'https://taita.blog' || origin === 'https://www.taita.blog' || origin === 'https://cms.taita.blog') {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, PATCH, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-tenant');
+      res.header('Access-Control-Allow-Credentials', 'true');
+      console.log('[OPTIONS] Allowing origin:', origin);
+      return res.sendStatus(200);
+    }
+
+    console.log('[OPTIONS] Origin not in whitelist, allowing anyway');
     return res.sendStatus(200);
   }
-
-  console.log('[OPTIONS] Origin not in whitelist, allowing anyway');
-  res.sendStatus(200);
+  next();
 });
 
 // Middleware adicional para la detección de subdominio (mantenido para compatibilidad)
