@@ -57,7 +57,7 @@ model Admin {
   picture  String?
   role     UserRole @default(AUTHOR) // Global role (SuperAdmin)
 
-  blog     Blog?
+  blogs    Blog[]    // Cambio de blog? a blogs[] para relación 1:N
 
   posts    Post[]    @relation("PostAuthor")
   pages    Page[]    @relation("PageAuthor")
