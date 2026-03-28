@@ -66,11 +66,11 @@ const uploadImage = async (req, res) => {
       try {
         const userWithBlog = await prisma.admin.findUnique({
           where: { id: req.user.id },
-          include: { blog: true }
+          include: { blogs: true }
         });
         
-        if (userWithBlog?.blog) {
-          blogId = userWithBlog.blog.id;
+        if (userWithBlog?.blogs?.[0]) {
+          blogId = userWithBlog.blogs[0].id;
           console.log('blogId encontrado en DB:', blogId);
         }
       } catch (dbError) {
@@ -280,11 +280,11 @@ const getMedia = async (req, res) => {
       try {
         const userWithBlog = await prisma.admin.findUnique({
           where: { id: req.user.id },
-          include: { blog: true }
+          include: { blogs: true }
         });
         
-        if (userWithBlog?.blog) {
-          blogId = userWithBlog.blog.id;
+        if (userWithBlog?.blogs?.[0]) {
+          blogId = userWithBlog.blogs[0].id;
         }
       } catch (dbError) {
         console.error('Error buscando blog del usuario en getMedia:', dbError);
@@ -358,11 +358,11 @@ const deleteMedia = async (req, res) => {
       try {
         const userWithBlog = await prisma.admin.findUnique({
           where: { id: req.user.id },
-          include: { blog: true }
+          include: { blogs: true }
         });
         
-        if (userWithBlog?.blog) {
-          blogId = userWithBlog.blog.id;
+        if (userWithBlog?.blogs?.[0]) {
+          blogId = userWithBlog.blogs[0].id;
         }
       } catch (dbError) {
         console.error('Error buscando blog del usuario en deleteMedia:', dbError);
@@ -455,11 +455,11 @@ const getMediaById = async (req, res) => {
       try {
         const userWithBlog = await prisma.admin.findUnique({
           where: { id: req.user.id },
-          include: { blog: true }
+          include: { blogs: true }
         });
         
-        if (userWithBlog?.blog) {
-          blogId = userWithBlog.blog.id;
+        if (userWithBlog?.blogs?.[0]) {
+          blogId = userWithBlog.blogs[0].id;
         }
       } catch (dbError) {
         console.error('Error buscando blog del usuario en getMediaById:', dbError);
