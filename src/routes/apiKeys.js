@@ -139,7 +139,10 @@ router.delete("/:uuid", async (req, res) => {
   try {
     const blogId = await getBlogId(req.user);
     const apiKey = await prisma.apiKey.findFirst({
-      where: { uuid: req.params.uuid, blogId },
+      where: {
+        uuid: req.params.uuid,
+        OR: [{ blogId }, { adminId: req.user.id }],
+      },
     });
 
     if (!apiKey) {
@@ -163,7 +166,10 @@ router.patch("/:uuid", async (req, res) => {
   try {
     const blogId = await getBlogId(req.user);
     const apiKey = await prisma.apiKey.findFirst({
-      where: { uuid: req.params.uuid, blogId },
+      where: {
+        uuid: req.params.uuid,
+        OR: [{ blogId }, { adminId: req.user.id }],
+      },
     });
 
     if (!apiKey) {
