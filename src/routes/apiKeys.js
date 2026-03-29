@@ -14,12 +14,29 @@ function generateApiKey() {
 }
 
 /**
+ * Resolve the blogId for the current user.
+ * Checks JWT payload first, then queries the database.
+ */
+async function getBlogId(user) {
+  // Try from JWT payload (set during login)
+  if (user.blogId) return user.blogId;
+
+  // Query the database for the user's first blog
+  const blog = await prisma.blog.findFirst({
+    where: { adminId: user.id },
+    select: { id: true },
+  });
+
+  return blog?.id || null;
+}
+
+/**
  * GET /api/api-keys
  * List API keys for the user's blog
  */
 router.get("/", async (req, res) => {
   try {
-    const blogId = req.user.blogId;
+    const blogId = await getBlogId(req.user);
     if (!blogId) {
       return res.status(400).json({ error: "No blog associated with this account" });
     }
@@ -59,7 +76,7 @@ router.get("/", async (req, res) => {
  */
 router.post("/", async (req, res) => {
   try {
-    const blogId = req.user.blogId;
+    const blogId = await getBlogId(req.user);
     if (!blogId) {
       return res.status(400).json({ error: "No blog associated with this account" });
     }
@@ -104,7 +121,7 @@ router.post("/", async (req, res) => {
  */
 router.delete("/:uuid", async (req, res) => {
   try {
-    const blogId = req.user.blogId;
+    const blogId = await getBlogId(req.user);
     const apiKey = await prisma.apiKey.findFirst({
       where: { uuid: req.params.uuid, blogId },
     });
@@ -128,7 +145,7 @@ router.delete("/:uuid", async (req, res) => {
  */
 router.patch("/:uuid", async (req, res) => {
   try {
-    const blogId = req.user.blogId;
+    const blogId = await getBlogId(req.user);
     const apiKey = await prisma.apiKey.findFirst({
       where: { uuid: req.params.uuid, blogId },
     });
