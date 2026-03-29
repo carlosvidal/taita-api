@@ -1,220 +1,236 @@
-# Astro Blog API
+# Taita Blog API
 
-This is the backend API for the Astro Blog application.
+Multi-tenant blog engine API with LLM-ready external endpoints.
 
-## Features
-- User authentication
-- Blog post management
-- Comment system
-- [Add other features]
+## Stack
 
-## Requisitos
-- Node.js 18+
-- PostgreSQL 12+
-- npm 9+
+- **Runtime**: Node.js 20 + Express 5
+- **Database**: PostgreSQL (Neon) + Prisma ORM
+- **Auth**: JWT (CMS) + API Keys (external agents)
+- **Storage**: Cloudinary
+- **Deploy**: PM2 + Caddy on DigitalOcean, CI/CD via GitHub Actions
 
-## Instalación
-```
-git clone https://github.com/tu-usuario/astro-blog-2.git
-cd astro-blog-2/api
+## Quick Start
+
+```bash
+git clone https://github.com/carlosvidal/taita-api.git
+cd taita-api
 npm install
-cp .env.example .env
-```
-
-## Configuración
-Editar .env con tus credenciales:
-```
-PORT=3000
-DATABASE_URL=postgres://user:pass@localhost:5432/astro_blog
-JWT_SECRET=tu_clave_secreta
-```
-
-## Uso
-```
-# Desarrollo
+cp .env.example .env  # Edit with your credentials
+npx prisma generate
+npx prisma migrate deploy
+npx prisma db seed
 npm run dev
-# Producción
-npm start
 ```
 
-## Trae AI
-Entiendo, voy a generar los documentos nuevamente de forma más limpia y separada. Aquí están los dos archivos correctamente formateados:
+## Environment Variables
 
-1. README.md:
-```markdown
-# Astro Blog API
+See `.env.example` for all available variables. Key ones:
 
-API backend para el sistema de blog astronómico.
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `JWT_SECRET` | Secret for JWT token signing |
+| `PORT` | Server port (default: 3001) |
+| `CORS_ORIGIN` | Allowed origins for CORS |
+| `CLOUDINARY_*` | Cloudinary credentials for image uploads |
+| `MAIN_DOMAIN` | Main domain (e.g. `taita.blog`) |
 
-## Características principales
-- Autenticación de usuarios
-- Gestión de artículos del blog
-- Sistema de comentarios
-- Búsqueda y filtrado
-- Gestión de categorías
+## Architecture
 
-## Requisitos
-- Node.js 18+
-- PostgreSQL 12+
-- npm 9+
-
-## Instalación
-```
-git clone https://github.com/tu-usuario/astro-blog-2.git
-cd astro-blog-2
-npm install
-cp .env.example .env
- ```
-
-## Configuración
-Edita el archivo .env con tus credenciales:
-
-```plaintext
-PORT=3000
-DATABASE_URL=postgres://user:password@localhost:5432/astro_blog
-JWT_SECRET=tu_secreto_jwt
- ```
-
-## Uso
-Iniciar servidor de desarrollo:
+Multi-tenant blog platform where each blog gets a subdomain (`demo.taita.blog`). Tenant detection happens via `X-Taita-Subdomain` header or subdomain extraction.
 
 ```
-npm run dev
- ```
-
-Iniciar servidor en producción:
-
+taita.blog          -> CMS (Netlify)
+backend.taita.blog  -> This API (Express)
+*.taita.blog        -> Frontend (Nuxt SSR)
 ```
-npm start
- ```
 
-## Documentación API
-La documentación completa está disponible en formato OpenAPI:
+---
 
-- Especificación: /openapi.yaml
-- Interfaz Swagger UI: /api-docs
-## Licencia
-MIT
+## External API v1 (LLM-Ready)
 
-```plaintext
+Designed for AI agents, automation tools, and third-party integrations.
 
-2. openapi.yaml:
+### Authentication
 
-```yaml:%2FUsers%2Fcarlosvidal%2Fwww%2Fastro-blog-2%2Fopenapi.yaml
-openapi: 3.0.3
-info:
-  title: Astro Blog API
-  description: API para gestión de contenido astronómico
-  version: 1.0.0
-  contact:
-    name: Soporte
-    email: soporte@astroblog.com
+All v1 endpoints require an API key in the `X-API-Key` header:
 
-servers:
-  - url: http://localhost:3000/api
-    description: Servidor de desarrollo
-
-paths:
-  /auth/register:
-    post:
-      summary: Registro de nuevo usuario
-      tags: [Autenticación]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserRegister'
-      responses:
-        '201':
-          description: Usuario registrado
-        '400':
-          description: Datos inválidos
-
-  /posts:
-    get:
-      summary: Obtener todos los artículos
-      tags: [Artículos]
-      responses:
-        '200':
-          description: Lista de artículos
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Post'
-
-components:
-  schemas:
-    UserRegister:
-      type: object
-      required: [email, password]
-      properties:
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-          format: password
-          minLength: 8
-
-    Post:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        title:
-          type: string
-        content:
-          type: string
-        publishedAt:
-          type: string
-          format: date-time
-
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
- ```
-
-¿Necesitas que agregue más endpoints o modifique alguna parte específica de los documentos?
-
-## carlosvidal
-Copy
-
-Delete
-
-no. tienes el mismo problema. arregla estos README.md openapi.yaml
-
-## Trae AI
-3 context(s) used
-
-Entiendo que necesitas los archivos limpios y bien formateados. Aquí están las versiones corregidas:
-
-1. README.md completo:
-## Configuración
-Editar .env con tus credenciales:
-
-```plaintext
-PORT=3000
-DATABASE_URL=postgres://user:pass@localhost:5432/astro_blog
-JWT_SECRET=tu_clave_secreta
- ```
-
-## Uso
+```bash
+curl https://backend.taita.blog/api/v1/posts \
+  -H "X-API-Key: tb_live_your_key_here"
 ```
-# Desarrollo
-npm run dev
 
-# Producción
-npm start
- ```
+API keys are scoped to a specific blog and support granular permissions (`posts:read`, `posts:write`).
 
-## Documentación
-- Especificación OpenAPI: /openapi.yaml
-- Interfaz Swagger: /api-docs
-## Licencia
+### Endpoints
+
+#### Create Post
+
+```http
+POST /api/v1/posts
+```
+
+```json
+{
+  "title": "My Post Title",
+  "content": "<p>HTML content of the post</p>",
+  "excerpt": "Optional short summary",
+  "slug": "custom-slug",
+  "category": "tecnologia",
+  "tags": ["ai", "automation"],
+  "status": "published",
+  "image": "https://example.com/image.jpg"
+}
+```
+
+**Required fields**: `title`, `content`
+
+**Optional fields**: `excerpt`, `slug` (auto-generated from title), `category` (resolved by name or slug), `tags` (created automatically if new), `status` (`published` or `draft`, default: `draft`), `image`
+
+**Response** (201):
+
+```json
+{
+  "id": "uuid",
+  "title": "My Post Title",
+  "slug": "my-post-title",
+  "status": "published",
+  "published_at": "2026-03-29T17:07:04.432Z",
+  "url": "https://demo.taita.blog/blog/my-post-title",
+  "category": { "name": "Tecnologia", "slug": "tecnologia" },
+  "tags": [{ "name": "ai", "slug": "ai" }],
+  "created_at": "2026-03-29T17:07:04.435Z"
+}
+```
+
+#### List Posts
+
+```http
+GET /api/v1/posts?status=published&page=1&limit=20
+```
+
+Returns paginated list with `data` array and `pagination` object.
+
+#### Get Post
+
+```http
+GET /api/v1/posts/:slug
+```
+
+Returns full post including `content`.
+
+#### Update Post
+
+```http
+PATCH /api/v1/posts/:slug
+```
+
+```json
+{
+  "title": "Updated Title",
+  "status": "published",
+  "tags": ["new-tag"]
+}
+```
+
+Only include fields you want to update.
+
+#### Delete Post
+
+```http
+DELETE /api/v1/posts/:slug
+```
+
+#### List Categories
+
+```http
+GET /api/v1/categories
+```
+
+#### List Tags
+
+```http
+GET /api/v1/tags
+```
+
+### Error Responses
+
+All errors follow this format:
+
+```json
+{
+  "error": "Error type",
+  "message": "Human-readable description"
+}
+```
+
+| Status | Meaning |
+|--------|---------|
+| 400 | Validation failed (missing required fields) |
+| 401 | Missing or invalid API key |
+| 403 | API key disabled, expired, or insufficient permissions |
+| 404 | Resource not found |
+| 409 | Slug conflict (post with that slug already exists) |
+| 500 | Internal server error |
+
+### API Key Management
+
+API keys are managed from the CMS (requires JWT auth):
+
+```http
+POST   /api/api-keys          # Create key (full key shown only once)
+GET    /api/api-keys           # List keys (masked)
+PATCH  /api/api-keys/:uuid     # Enable/disable key
+DELETE /api/api-keys/:uuid     # Revoke key
+```
+
+---
+
+## Internal API (CMS)
+
+Used by the CMS frontend. Authenticated via JWT Bearer token.
+
+### Auth
+- `POST /api/auth/login` - Login, returns JWT
+- `POST /api/auth/register` - Register new admin
+
+### Content Management (JWT required)
+- `GET/POST/PATCH/DELETE /api/posts` - Posts CRUD
+- `GET/POST/PATCH/DELETE /api/categories` - Categories
+- `GET/POST/PATCH/DELETE /api/tags` - Tags
+- `GET/POST/PATCH/DELETE /api/pages` - Static pages
+- `GET/POST/PATCH/DELETE /api/series` - Post series
+- `GET/POST/PATCH/DELETE /api/menu` - Navigation menu
+- `GET/POST/DELETE /api/media` - File uploads
+- `GET/POST/DELETE /api/comments` - Comment moderation
+- `GET/PATCH /api/settings` - Blog settings
+- `GET /api/stats` - Blog statistics
+
+### Public Endpoints (no auth)
+- `GET /api/posts/public` - Published posts
+- `GET /api/categories/public` - Categories
+- `GET /api/tags/public` - Tags
+- `GET /api/menu/public` - Navigation
+- `GET /api/settings/public` - Public blog settings
+- `GET /api/pages/public` - Published pages
+- `GET /api/search/public` - Search
+- `GET /health` - Health check
+
+## Database
+
+PostgreSQL with Prisma ORM. Key models:
+
+- **Admin** - Users (SUPER_ADMIN, ADMIN, AUTHOR)
+- **Blog** - Multi-tenant blogs with subdomain/custom domain
+- **Post** - Blog posts with categories, tags, series
+- **Category/Tag** - Taxonomy (unique per blog)
+- **ApiKey** - External API authentication (scoped per blog)
+- **Comment** - Comments with moderation
+- **Media** - File uploads with Cloudinary
+- **Page** - Static pages
+- **Series** - Post collections
+
+## License
+
 MIT
