@@ -319,252 +319,58 @@ const app = express();
 const port = process.env.PORT || 3000;
 addDebugRoutes(app);
 
-// IMPORTANTE: Handler de CORS debe ser el PRIMER middleware, antes que todo lo demás
-// Handler universal para todas las requests (incluidas OPTIONS preflight)
+// CORS middleware
 app.use((req, res, next) => {
   const origin = req.headers.origin || '';
 
-  console.log(`[CORS] ${req.method} request from origin: ${origin}`);
-  console.log(`[CORS] Request path: ${req.path}`);
-  console.log(`[CORS] Headers:`, req.headers);
+  // Allow: any *.taita.blog subdomain, taita.blog itself, localhost for dev
+  const isAllowed =
+    !origin ||
+    origin.endsWith('.taita.blog') ||
+    origin === 'https://taita.blog' ||
+    origin.startsWith('http://localhost');
 
-  // Lista de orígenes permitidos
-  const allowedOrigins = [
-    'https://taita.blog',
-    'https://www.taita.blog',
-    'https://cms.taita.blog',
-    'https://backend.taita.blog',
-    'http://localhost:4321',
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'http://192.168.3.115:3000',
-    'http://192.168.3.115:3001',
-    'http://192.168.3.115:3002',
-    'http://192.168.3.115:3003',
-    'http://192.168.3.115:3004',
-    'http://192.168.3.115:3005',
-    'http://192.168.3.115:3006',
-  ];
-
-  // Verificar si es un subdominio de taita.blog
-  const isTaitaSubdomain = origin.endsWith('.taita.blog') || allowedOrigins.includes(origin);
-
-  if (isTaitaSubdomain || origin.startsWith('http://localhost') || origin.startsWith('http://192.168')) {
+  if (isAllowed && origin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, PATCH, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Taita-Subdomain, Accept, Origin, Referer, User-Agent, x-tenant');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Taita-Subdomain, X-Tenant, X-API-Key, Accept');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Max-Age', '86400'); // 24 horas
-
-    console.log(`[CORS] ✅ Origin allowed: ${origin}`);
-  } else {
-    console.log(`[CORS] ⚠️ Origin not in whitelist: ${origin}`);
+    res.setHeader('Access-Control-Max-Age', '86400');
+    res.setHeader('Vary', 'Origin');
   }
 
-  // Si es un preflight OPTIONS request, responder inmediatamente
   if (req.method === 'OPTIONS') {
-    console.log(`[CORS] ✅ Responding to OPTIONS preflight from: ${origin}`);
-    return res.status(204).send();
+    return res.status(204).end();
   }
 
   next();
 });
 
-// Middleware adicional para la detección de subdominio (mantenido para compatibilidad)
-const dynamicCorsMiddleware = async (req, res, next) => {
-  const origin = req.headers.origin;
+// Rate limiting
+import rateLimit from 'express-rate-limit';
 
-  // Permitir siempre en desarrollo
-  const devOrigins = [
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://localhost:4321",
-    "http://localhost:4322",
-    "http://localhost:4323",
-  ];
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per window per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests', message: 'Please try again later' },
+});
 
-  // Dominios principales siempre permitidos
-  const mainDomains = [
-    "https://taita.blog",
-    "https://www.taita.blog",
-    "https://cms.taita.blog",
-    "https://super-admin.taita.blog",
-    // Dominios de Render.com
-    "https://taita-frontend.onrender.com",
-    "https://taita-api.onrender.com",
-    "https://taita-cms.onrender.com",
-  ];
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10, // 10 login attempts per 15 min
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts', message: 'Please try again later' },
+});
 
-  // Función para verificar si un origen es un subdominio de taita.blog
-  const isTaitaSubdomain = (origin) => {
-    if (!origin) {
-      console.log("Origin is undefined or empty");
-      return false;
-    }
+app.use('/api/v1/', apiLimiter);
+app.use('/api/auth/login', authLimiter);
 
-    try {
-      // Si el origen no comienza con http:// o https://, añadirlo temporalmente
-      const urlToCheck = origin.startsWith("http")
-        ? origin
-        : `https://${origin}`;
-      const hostname = new URL(urlToCheck).hostname;
-
-      // Verificar si es un subdominio de taita.blog
-      const isValid =
-        hostname.endsWith(".taita.blog") ||
-        hostname === "taita.blog" ||
-        hostname === "www.taita.blog" ||
-        hostname === "localhost"; // Para desarrollo local
-
-      console.log(`Verificando subdominio para ${hostname}: ${isValid}`);
-      return isValid;
-    } catch (error) {
-      console.error("Error al verificar el subdominio:", error.message);
-      console.error("Origin que causó el error:", origin);
-      return false;
-    }
-  };
-
-  // Debug: Mostrar información del origen
-  console.log("=== Información de la solicitud ===");
-  console.log("Método:", req.method);
-  console.log("URL:", req.originalUrl);
-  console.log("Origen de la solicitud:", origin);
-  console.log("Headers:", JSON.stringify(req.headers, null, 2));
-
-  // Verificar si el origen está permitido
-  const isAllowedOrigin =
-    !origin || // Permitir solicitudes sin origen (desde proxy/Postman)
-    isTaitaSubdomain(origin) ||
-    devOrigins.includes(origin) ||
-    mainDomains.includes(origin);
-
-  // Si no hay origin pero hay un Referer header, intentar extraer el origin
-  let effectiveOrigin = origin;
-  if (!origin && req.headers.referer) {
-    try {
-      const refererUrl = new URL(req.headers.referer);
-      effectiveOrigin = `${refererUrl.protocol}//${refererUrl.host}`;
-      console.log(`Usando Referer como origin: ${effectiveOrigin}`);
-    } catch (e) {
-      console.error("Error parsing referer:", e);
-    }
-  }
-
-  console.log("Es subdominio de taita.blog:", isTaitaSubdomain(origin));
-  console.log("Está en lista de desarrollo:", devOrigins.includes(origin));
-  console.log(
-    "Está en lista de dominios principales:",
-    mainDomains.includes(origin)
-  );
-  console.log("Origen permitido:", isAllowedOrigin);
-  console.log("Origen efectivo:", effectiveOrigin);
-  console.log("==================================");
-
-  // Si el origen está permitido, configurar los headers CORS
-  if (isAllowedOrigin) {
-    // No usar '*' cuando se usan credenciales
-    // Usar el origen específico de la solicitud
-    const allowOrigin =
-      effectiveOrigin || origin || req.headers.origin || mainDomains[0] || "http://localhost:5173";
-
-    console.log(`Configurando CORS para origen: ${allowOrigin}`);
-
-    // Configuración de CORS para credenciales
-    res.header("Access-Control-Allow-Origin", allowOrigin);
-    res.header(
-      "Access-Control-Allow-Methods",
-      "GET, PUT, POST, DELETE, PATCH, OPTIONS"
-    );
-    res.header(
-      "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, X-Requested-With, X-XSRF-TOKEN, Accept, Origin, X-Requested-With, Content-Type, Accept, x-tenant"
-    );
-    res.header("Access-Control-Allow-Credentials", "true");
-    res.header("Access-Control-Max-Age", "3600");
-
-    // Para solicitudes con credenciales, asegurarse de que el origen coincida exactamente
-    if (req.headers.origin) {
-      res.header("Vary", "Origin");
-    }
-
-    // Manejar solicitudes OPTIONS (preflight)
-    if (req.method === "OPTIONS") {
-      console.log("Manejando solicitud OPTIONS (preflight)");
-      return res.status(200).end();
-    }
-
-    return next();
-  }
-
-  // Si es uno de los dominios principales o un subdominio de taita.blog, permitir
-  if (mainDomains.includes(origin) || isTaitaSubdomain(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
-    res.header(
-      "Access-Control-Allow-Methods",
-      "GET, PUT, POST, DELETE, PATCH, OPTIONS"
-    );
-    res.header(
-      "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, x-tenant"
-    );
-    res.header("Access-Control-Allow-Credentials", "true");
-
-    if (req.method === "OPTIONS") {
-      return res.sendStatus(200);
-    }
-
-    return next();
-  }
-
-  try {
-    // Extraer el subdominio del origen
-    let hostname = new URL(origin).hostname;
-    let subdomain = hostname.split(".")[0];
-
-    // Buscar en la base de datos si existe un blog con este subdominio
-    const blog = await prisma.blog.findFirst({
-      where: { subdomain: subdomain },
-    });
-
-    if (blog) {
-      // Si existe el blog, permitir el acceso
-      res.header("Access-Control-Allow-Origin", origin);
-      res.header(
-        "Access-Control-Allow-Methods",
-        "GET, PUT, POST, DELETE, PATCH, OPTIONS"
-      );
-      res.header(
-        "Access-Control-Allow-Headers",
-        "Content-Type, Authorization, x-tenant"
-      );
-      res.header("Access-Control-Allow-Credentials", "true");
-
-      console.log(
-        `CORS: Permitiendo acceso desde ${origin} (subdominio: ${subdomain})`
-      );
-    } else {
-      // Si no existe, registrar el intento
-      console.log(
-        `CORS: Bloqueando acceso desde ${origin} (subdominio: ${subdomain} no encontrado)`
-      );
-    }
-  } catch (error) {
-    console.error("Error verificando CORS:", error);
-  }
-
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
-
-  next();
-};
-
-// Aplicar el middleware CORS dinámico
-app.use(dynamicCorsMiddleware);
 app.use(express.json());
 
-// Health check endpoint para Docker/Coolify
+// Health check endpoint
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
