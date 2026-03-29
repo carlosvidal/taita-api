@@ -34,6 +34,8 @@ import tagsPublicRouter from "./routes/tags-public.js";
 import tagsRouter from "./routes/tags.js";
 import userProfileRouter from "./routes/userProfile.js";
 import { addDebugRoutes } from "./controllers/commentsController.js";
+import v1PostsRouter from "./routes/v1/posts.js";
+import apiKeysRouter from "./routes/apiKeys.js";
 
 dotenv.config();
 
@@ -567,6 +569,9 @@ app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+// External API v1 (authenticated via API key, not JWT)
+app.use("/api/v1/posts", v1PostsRouter);
+
 // Endpoint interno de verificación de emails
 app.use("/api/emails", emailsRouter);
 
@@ -832,6 +837,7 @@ app.use("/api/stats", statsRouter); // Rutas de estadísticas
 app.use("/api/tags", tagsRouter); // Rutas de tags
 app.use("/api/users", userProfileRouter);
 
+app.use("/api/api-keys", apiKeysRouter); // Gestión de API keys (CMS)
 app.use("/api/subscriptions", subscriptionsRouter); // Añadir rutas de suscripciones
 app.use("/api/payments", paymentRouter); // Añadir rutas de pagos
 

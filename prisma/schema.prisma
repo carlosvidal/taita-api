@@ -102,6 +102,7 @@ model Blog {
   series    Series[]
   media     Media[]
   menuItems MenuItem[]
+  apiKeys   ApiKey[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -242,6 +243,21 @@ model Media {
   variants    String?
   cloudinaryId String? // Cloudinary public ID
   cloudinaryUrl String? // Cloudinary secure URL
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ApiKey {
+  id          Int      @id @default(autoincrement())
+  uuid        String   @default(uuid()) @unique
+  name        String   // e.g. "Claude Agent", "Zapier", "n8n"
+  key         String   @unique // tb_live_xxx or tb_test_xxx
+  blog        Blog     @relation(fields: [blogId], references: [id])
+  blogId      Int
+  permissions String[] @default(["posts:write", "posts:read"]) // granular permissions
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  active      Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
