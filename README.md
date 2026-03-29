@@ -217,6 +217,76 @@ Used by the CMS frontend. Authenticated via JWT Bearer token.
 - `GET /api/search/public` - Search
 - `GET /health` - Health check
 
+---
+
+## MCP Server (AI Agent Integration)
+
+Connect Claude Desktop, Claude Code, or any MCP-compatible client directly to your Taita blog.
+
+**Repository**: [github.com/carlosvidal/taita-mcp-server](https://github.com/carlosvidal/taita-mcp-server)
+
+### Quick Setup
+
+```bash
+git clone https://github.com/carlosvidal/taita-mcp-server.git
+cd taita-mcp-server
+npm install
+```
+
+### Claude Desktop
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "taita": {
+      "command": "node",
+      "args": ["/path/to/taita-mcp-server/index.js"],
+      "env": {
+        "TAITA_API_KEY": "tb_live_your_key_here",
+        "TAITA_API_URL": "https://backend.taita.blog/api/v1"
+      }
+    }
+  }
+}
+```
+
+### Claude Code
+
+Add to `.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "taita": {
+      "command": "node",
+      "args": ["/path/to/taita-mcp-server/index.js"],
+      "env": {
+        "TAITA_API_KEY": "tb_live_your_key_here",
+        "TAITA_API_URL": "https://backend.taita.blog/api/v1"
+      }
+    }
+  }
+}
+```
+
+### Available MCP Tools
+
+| Tool | Description |
+| --- | --- |
+| `create_post` | Create a new blog post |
+| `list_posts` | List posts with filters |
+| `get_post` | Get post by slug |
+| `update_post` | Update a post |
+| `delete_post` | Delete a post |
+| `list_categories` | List categories |
+| `list_tags` | List tags |
+
+Once configured, just ask Claude: *"Create a blog post about the future of AI in education"*
+
+---
+
 ## Database
 
 PostgreSQL with Prisma ORM. Key models:
