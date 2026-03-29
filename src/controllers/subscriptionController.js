@@ -17,10 +17,15 @@ export const getSubscriptionStatus = async (req, res) => {
     }
 
     const userId = req.user.id;
+    const blogUuid = req.query.blogUuid;
 
-    // Buscar la suscripción del usuario
-    const blog = await prisma.blog.findUnique({
-      where: { adminId: userId },
+    // Buscar la suscripción del blog
+    const where = blogUuid
+      ? { uuid: blogUuid }
+      : { adminId: userId };
+
+    const blog = await prisma.blog.findFirst({
+      where,
       select: {
         plan: true,
         subscriptionId: true,
