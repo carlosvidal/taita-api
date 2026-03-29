@@ -41,8 +41,14 @@ router.get("/", async (req, res) => {
       return res.status(400).json({ error: "No blog associated with this account" });
     }
 
+    // Find keys scoped to this blog OR to this admin
     const keys = await prisma.apiKey.findMany({
-      where: { blogId },
+      where: {
+        OR: [
+          { blogId },
+          { adminId: req.user.id },
+        ],
+      },
       select: {
         id: true,
         uuid: true,
@@ -53,14 +59,17 @@ router.get("/", async (req, res) => {
         lastUsedAt: true,
         expiresAt: true,
         createdAt: true,
+        blogId: true,
+        adminId: true,
       },
       orderBy: { createdAt: "desc" },
     });
 
-    // Mask keys: show only last 8 chars
+    // Mask keys and add scope
     const masked = keys.map((k) => ({
       ...k,
       key: `tb_live_...${k.key.slice(-8)}`,
+      scope: k.adminId ? "all_blogs" : "single_blog",
     }));
 
     return res.json({ data: masked });
@@ -81,7 +90,7 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "No blog associated with this account" });
     }
 
-    const { name, permissions, expiresAt } = req.body;
+    const { name, permissions, expiresAt, scope } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: "Field 'name' is required (e.g. 'Claude Agent')" });
@@ -89,21 +98,28 @@ router.post("/", async (req, res) => {
 
     const key = generateApiKey();
 
-    const apiKey = await prisma.apiKey.create({
-      data: {
-        name,
-        key,
-        blogId,
-        permissions: permissions || ["posts:write", "posts:read"],
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-      },
-    });
+    // scope: "all" = access to all blogs of this admin, "blog" (default) = current blog only
+    const data = {
+      name,
+      key,
+      permissions: permissions || ["posts:write", "posts:read"],
+      expiresAt: expiresAt ? new Date(expiresAt) : null,
+    };
+
+    if (scope === "all") {
+      data.adminId = req.user.id;
+    } else {
+      data.blogId = blogId;
+    }
+
+    const apiKey = await prisma.apiKey.create({ data });
 
     // Return full key only on creation (never shown again)
     return res.status(201).json({
       id: apiKey.uuid,
       name: apiKey.name,
       key: apiKey.key, // Full key - shown only once
+      scope: apiKey.adminId ? "all_blogs" : "single_blog",
       permissions: apiKey.permissions,
       expires_at: apiKey.expiresAt,
       created_at: apiKey.createdAt,

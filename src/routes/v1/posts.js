@@ -6,6 +6,37 @@ const prisma = new PrismaClient();
 const router = express.Router();
 
 /**
+ * Helper: require req.blog to be set. Returns 400 if missing.
+ */
+function requireBlog(req, res) {
+  if (req.blog) return true;
+  res.status(400).json({
+    error: "Blog not specified",
+    message: "This API key has access to multiple blogs. Specify which blog with the X-Blog header (subdomain).",
+    available: req.blogs?.map((b) => b.subdomain) || [],
+  });
+  return false;
+}
+
+/**
+ * GET /api/v1/blogs
+ * List blogs accessible by this API key
+ */
+router.get("/blogs", authenticateApiKey("posts:read"), async (req, res) => {
+  const blogs = req.blogs || (req.blog ? [req.blog] : []);
+  return res.json({
+    data: blogs.map((b) => ({
+      id: b.uuid,
+      name: b.name,
+      subdomain: b.subdomain,
+      domain: b.domain,
+      description: b.description,
+      url: b.domain ? `https://${b.domain}` : `https://${b.subdomain}.taita.blog`,
+    })),
+  });
+});
+
+/**
  * Helper: generate slug from title
  */
 function slugify(text) {
@@ -42,6 +73,7 @@ async function resolveTags(tagNames, blogId) {
  */
 router.post("/", authenticateApiKey("posts:write"), async (req, res) => {
   try {
+    if (!requireBlog(req, res)) return;
     const { title, content, excerpt, slug, category, tags, status, image } = req.body;
     const blogId = req.blog.id;
 
@@ -148,6 +180,7 @@ router.post("/", authenticateApiKey("posts:write"), async (req, res) => {
  */
 router.get("/", authenticateApiKey("posts:read"), async (req, res) => {
   try {
+    if (!requireBlog(req, res)) return;
     const blogId = req.blog.id;
     const { status, page = 1, limit = 20 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -206,6 +239,7 @@ router.get("/", authenticateApiKey("posts:read"), async (req, res) => {
  */
 router.get("/:slug", authenticateApiKey("posts:read"), async (req, res) => {
   try {
+    if (!requireBlog(req, res)) return;
     const post = await prisma.post.findFirst({
       where: { slug: req.params.slug, blogId: req.blog.id },
       include: {
@@ -247,6 +281,7 @@ router.get("/:slug", authenticateApiKey("posts:read"), async (req, res) => {
  */
 router.patch("/:slug", authenticateApiKey("posts:write"), async (req, res) => {
   try {
+    if (!requireBlog(req, res)) return;
     const post = await prisma.post.findFirst({
       where: { slug: req.params.slug, blogId: req.blog.id },
     });
@@ -328,6 +363,7 @@ router.patch("/:slug", authenticateApiKey("posts:write"), async (req, res) => {
  */
 router.delete("/:slug", authenticateApiKey("posts:write"), async (req, res) => {
   try {
+    if (!requireBlog(req, res)) return;
     const post = await prisma.post.findFirst({
       where: { slug: req.params.slug, blogId: req.blog.id },
     });

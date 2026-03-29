@@ -63,6 +63,7 @@ model Admin {
   pages    Page[]    @relation("PageAuthor")
   series   Series[]  @relation("SeriesAuthor")
 
+  apiKeys  ApiKey[]  @relation("AdminApiKeys")
   passwordResetToken PasswordResetToken?
 }
 
@@ -252,9 +253,11 @@ model ApiKey {
   uuid        String   @default(uuid()) @unique
   name        String   // e.g. "Claude Agent", "Zapier", "n8n"
   key         String   @unique // tb_live_xxx or tb_test_xxx
-  blog        Blog     @relation(fields: [blogId], references: [id])
-  blogId      Int
-  permissions String[] @default(["posts:write", "posts:read"]) // granular permissions
+  blog        Blog?    @relation(fields: [blogId], references: [id])
+  blogId      Int?     // If set, key is scoped to this blog only
+  admin       Admin?   @relation("AdminApiKeys", fields: [adminId], references: [id])
+  adminId     Int?     // If set, key has access to all blogs of this admin
+  permissions String[] @default(["posts:write", "posts:read"])
   lastUsedAt  DateTime?
   expiresAt   DateTime?
   active      Boolean  @default(true)

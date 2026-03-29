@@ -377,6 +377,7 @@ app.get("/health", (req, res) => {
 
 // External API v1 (authenticated via API key, not JWT)
 app.use("/api/v1/posts", v1PostsRouter);
+app.use("/api/v1", v1PostsRouter); // Also mounts /api/v1/blogs, /api/v1/categories, /api/v1/tags
 
 // Endpoint interno de verificación de emails
 app.use("/api/emails", emailsRouter);
