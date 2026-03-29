@@ -552,6 +552,7 @@ app.use(express.static(path.join(__dirname, "../public")));
 
 // Rutas de autenticación (deben ir antes del middleware de autenticación)
 app.use("/api/auth", authRouter); // Rutas de autenticación
+app.use("/api/password", passwordRouter); // Password reset (public, no auth required)
 
 // Rutas de la API (las rutas públicas deben ir antes que las protegidas)
 // Registrar rutas públicas CON y SIN el prefijo /api para compatibilidad
@@ -647,9 +648,6 @@ app.use("/api/api-keys", apiKeysRouter); // Gestión de API keys (CMS)
 app.use("/api/subscriptions", subscriptionsRouter); // Añadir rutas de suscripciones
 app.use("/api/payments", paymentRouter); // Añadir rutas de pagos
 
-// Importar y usar las nuevas rutas de recuperación de contraseña
-
-app.use("/api/password", passwordRouter); // Añadir rutas de recuperación de contraseña
 
 // Ejecutar la función de corrección de la base de datos antes de iniciar el servidor
 (async () => {
