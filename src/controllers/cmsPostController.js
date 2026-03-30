@@ -26,7 +26,8 @@ export const createPost = async (req, res) => {
       content: req.body.content,
       excerpt: req.body.excerpt || "",
       slug: slug,
-      status: req.body.status === "published" ? "PUBLISHED" : "DRAFT"
+      status: req.body.status === "published" ? "PUBLISHED" : "DRAFT",
+      visibility: req.body.visibility || "PUBLIC",
     };
     
     // Agregar fecha de publicación si corresponde
@@ -172,6 +173,7 @@ export const updatePost = async (req, res) => {
         excerpt: req.body.excerpt || "",
         slug: req.body.slug || existingPost.slug,
         status: req.body.status === "published" ? "PUBLISHED" : "DRAFT",
+        visibility: req.body.visibility || existingPost.visibility || "PUBLIC",
         publishedAt: req.body.status === "published" && !existingPost.publishedAt ? new Date() : existingPost.publishedAt
       };
 

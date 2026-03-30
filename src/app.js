@@ -36,6 +36,10 @@ import userProfileRouter from "./routes/userProfile.js";
 import { addDebugRoutes } from "./controllers/commentsController.js";
 import v1PostsRouter from "./routes/v1/posts.js";
 import apiKeysRouter from "./routes/apiKeys.js";
+import subscribersPublicRouter from "./routes/subscribers-public.js";
+import subscribersRouter from "./routes/subscribers.js";
+import subscriberManagementRouter from "./routes/subscriberManagement.js";
+import integrationsRouter from "./routes/integrations.js";
 
 dotenv.config();
 
@@ -568,6 +572,14 @@ app.use("/settings/public", settingsPublicRouter); // Sin prefijo /api
 app.use("/api/tags/public", tagsPublicRouter); // Ruta pública para tags (sin autenticación)
 app.use("/tags/public", tagsPublicRouter); // Sin prefijo /api
 
+// Subscriber public routes (magic link auth, no JWT required)
+app.use("/api/subscribers/public", subscribersPublicRouter);
+app.use("/subscribers/public", subscribersPublicRouter);
+
+// Subscriber authenticated routes (subscriber JWT)
+app.use("/api/subscribers/auth", subscribersRouter);
+app.use("/subscribers/auth", subscribersRouter);
+
 // Middleware para verificar autenticación en rutas protegidas
 const requireAuth = (req, res, next) => {
   // Lista de rutas que no requieren autenticación
@@ -592,6 +604,10 @@ const requireAuth = (req, res, next) => {
     "/uploads",
     "/api/password",
     "/api/auth/login",
+    "/api/subscribers/public",
+    "/subscribers/public",
+    "/api/subscribers/auth",
+    "/subscribers/auth",
   ];
 
   // Verificar si la ruta actual está en la lista de rutas públicas (comparación robusta)
@@ -648,6 +664,8 @@ app.use("/api/users", userProfileRouter);
 app.use("/api/api-keys", apiKeysRouter); // Gestión de API keys (CMS)
 app.use("/api/subscriptions", subscriptionsRouter); // Añadir rutas de suscripciones
 app.use("/api/payments", paymentRouter); // Añadir rutas de pagos
+app.use("/api/subscriber-management", subscriberManagementRouter); // Gestión de suscriptores (CMS)
+app.use("/api/integrations", integrationsRouter); // Integraciones (Patreon, etc.)
 
 
 // Ejecutar la función de corrección de la base de datos antes de iniciar el servidor

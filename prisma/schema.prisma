@@ -43,6 +43,17 @@ enum CommentStatus {
   SPAM
 }
 
+enum PostVisibility {
+  PUBLIC
+  SUBSCRIBERS
+  PREMIUM
+}
+
+enum SubscriberTier {
+  FREE
+  PREMIUM
+}
+
 model Admin {
   id       Int     @id @default(autoincrement())
   uuid     String  @default(uuid()) @unique
@@ -104,11 +115,53 @@ model Blog {
   media     Media[]
   menuItems MenuItem[]
   apiKeys   ApiKey[]
+  subscribers Subscriber[]
+  integration BlogIntegration?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
+model Subscriber {
+  id              Int            @id @default(autoincrement())
+  uuid            String         @default(uuid()) @unique
+  email           String
+  name            String?
+  tier            SubscriberTier @default(FREE)
+  blog            Blog           @relation(fields: [blogId], references: [id])
+  blogId          Int
+  confirmedAt     DateTime?
+  patreonId       String?
+  patreonLinkedAt DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
+  magicLinks      MagicLink[]
+
+  @@unique([email, blogId], name: "subscriber_email_blog_unique")
+}
+
+model MagicLink {
+  id           Int        @id @default(autoincrement())
+  token        String     @unique
+  subscriber   Subscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+  subscriberId Int
+  expiresAt    DateTime
+  usedAt       DateTime?
+  createdAt    DateTime   @default(now())
+}
+
+model BlogIntegration {
+  id                  Int      @id @default(autoincrement())
+  uuid                String   @default(uuid()) @unique
+  blog                Blog     @relation(fields: [blogId], references: [id])
+  blogId              Int      @unique
+  patreonClientId     String?
+  patreonClientSecret String?
+  patreonCampaignId   String?
+  patreonWebhookSecret String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
 
 model Post {
   blog      Blog     @relation(fields: [blogId], references: [id])
@@ -128,6 +181,7 @@ model Post {
   imageId        Int?     // Reference to Media model
   thumbnail      String?  // Optional thumbnail path
   status         PublishStatus @default(DRAFT)
+  visibility     PostVisibility @default(PUBLIC)
   publishedAt    DateTime?
   author         Admin    @relation("PostAuthor", fields: [authorId], references: [id])
   authorId       Int

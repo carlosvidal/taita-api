@@ -1,19 +1,55 @@
 import express from "express";
 import { PrismaClient } from "@prisma/client";
+import optionalSubscriberAuth from "../middleware/optionalSubscriberAuth.js";
+
 const prisma = new PrismaClient();
 const router = express.Router();
+
+// Apply optional subscriber auth to all public post routes
+router.use(optionalSubscriberAuth);
 
 // Helper function para mapear posts al formato esperado por el frontend
 const mapPostToPublicFormat = (post) => {
   return {
     ...post,
-    featured_image: post.image, // Mapear 'image' a 'featured_image'
+    featured_image: post.image,
     author_id: post.authorId,
     category_id: post.categoryId,
     published_at: post.publishedAt,
     updated_at: post.updatedAt,
     created_at: post.createdAt,
   };
+};
+
+/**
+ * Filter post content based on visibility and subscriber tier.
+ * Returns the post with content stripped if the subscriber lacks access.
+ */
+const filterPostByVisibility = (post, subscriber) => {
+  const mapped = mapPostToPublicFormat(post);
+  mapped.visibility = post.visibility || "PUBLIC";
+
+  if (mapped.visibility === "PUBLIC") {
+    return { ...mapped, locked: false };
+  }
+
+  if (mapped.visibility === "SUBSCRIBERS") {
+    // Any confirmed subscriber (free or premium) can access
+    if (subscriber && subscriber.blogId === post.blogId) {
+      return { ...mapped, locked: false };
+    }
+    return { ...mapped, content: mapped.excerpt || "", locked: true, lockReason: "subscription_required" };
+  }
+
+  if (mapped.visibility === "PREMIUM") {
+    // Only premium subscribers can access
+    if (subscriber && subscriber.blogId === post.blogId && subscriber.tier === "PREMIUM") {
+      return { ...mapped, locked: false };
+    }
+    return { ...mapped, content: mapped.excerpt || "", locked: true, lockReason: "premium_required" };
+  }
+
+  return { ...mapped, locked: false };
 };
 
 // Endpoint público para obtener posts publicados (para el frontend público)
@@ -157,8 +193,10 @@ router.get("/", async (req, res) => {
       `Encontrados ${posts.length} posts publicados para el blog ${blog.name}`
     );
 
-    // Mapear posts al formato esperado por el frontend
-    const mappedPosts = posts.map(mapPostToPublicFormat);
+    // Mapear posts con filtro de visibilidad
+    const mappedPosts = posts.map((post) =>
+      filterPostByVisibility(post, req.subscriber)
+    );
     res.json(mappedPosts);
   } catch (error) {
     console.error("Error al obtener posts públicos:", error);
@@ -290,9 +328,18 @@ router.get("/:slug", async (req, res) => {
       return res.status(404).json({ error: "Post not found" });
     }
 
-    // Mapear el post al formato esperado por el frontend
-    const mappedPost = mapPostToPublicFormat(post);
-    res.json(mappedPost);
+    // Filter by visibility
+    const filtered = filterPostByVisibility(post, req.subscriber);
+
+    if (filtered.locked) {
+      return res.status(403).json({
+        error: filtered.lockReason,
+        visibility: filtered.visibility,
+        post: filtered, // Include metadata + excerpt but not full content
+      });
+    }
+
+    res.json(filtered);
   } catch (error) {
     console.error("Error al obtener post público por slug:", error);
     res.status(500).json({ error: error.message });
