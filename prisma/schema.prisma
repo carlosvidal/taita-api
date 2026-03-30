@@ -97,6 +97,9 @@ model Blog {
   language  String?  // Idioma (ej: 'es')
   template  String?  // Plantilla visual
   googleAnalyticsId String? // ID de Google Analytics
+  adsEnabled    Boolean  @default(true)  // Show platform ads (FREE plan only)
+  adsensePublisherId String? // Author's own AdSense publisher ID (PRO plan)
+  adSlots       Json?    // Custom ad slot configuration (JSON)
   socialNetworks Json? // Redes sociales (JSON)
   timezone  String?  @default("America/Lima") // Zona horaria del blog
 
