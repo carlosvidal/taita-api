@@ -299,8 +299,6 @@ model Media {
   entityType  String?
   entityId    String?
   variants    String?
-  cloudinaryId String? // Cloudinary public ID (legacy)
-  cloudinaryUrl String? // Cloudinary secure URL (legacy)
   storageKey    String? // R2 object key
   storageUrl    String? // R2 public URL
   createdAt   DateTime @default(now())

@@ -1,6 +1,5 @@
 import { PrismaClient } from "@prisma/client";
 import { v4 as uuidv4 } from "uuid";
-import cloudinaryService from "../services/cloudinary.js";
 import r2Service from "../services/r2.js";
 import sharp from "sharp";
 import path from "path";
@@ -249,7 +248,7 @@ const getMedia = async (req, res) => {
       variants: typeof item.variants === 'string' ? 
         JSON.parse(item.variants) : 
         item.variants || {},
-      url: item.storageUrl || item.cloudinaryUrl || item.path
+      url: item.storageUrl || item.path
     }));
 
     const total = await prisma.media.count({ where });
@@ -341,18 +340,9 @@ const deleteMedia = async (req, res) => {
         console.error('Error al eliminar de R2:', r2Error);
       }
     }
-    // Eliminar de Cloudinary si es legacy
-    else if (media.cloudinaryId) {
-      try {
-        await cloudinaryService.deleteImage(media.cloudinaryId);
-        console.log('Imagen eliminada de Cloudinary:', media.cloudinaryId);
-      } catch (cloudinaryError) {
-        console.error('Error al eliminar de Cloudinary:', cloudinaryError);
-      }
-    }
 
     // Eliminar archivos locales si existen
-    if (media.path && !media.cloudinaryId && !media.storageKey) {
+    if (media.path && !media.storageKey) {
       try {
         const uploadsDir = path.resolve(process.cwd(), 'uploads');
         const fullPath = path.join(uploadsDir, media.path);
