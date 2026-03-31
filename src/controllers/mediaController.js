@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { v4 as uuidv4 } from "uuid";
 import cloudinaryService from "../services/cloudinary.js";
+import r2Service from "../services/r2.js";
 import sharp from "sharp";
 import path from "path";
 import fs from "fs";
@@ -53,41 +54,26 @@ const uploadImage = async (req, res) => {
       });
     }
 
-    // Obtener información del blog desde la autenticación
-    console.log('req.user:', req.user);
-    console.log('req.body:', req.body);
-    
-    let blogId = req.user?.blogId || req.body.blogId;
-    console.log('blogId extraído del token:', blogId);
-    
+    // Obtener blogId: API key auth (req.blog) o JWT auth (req.user)
+    let blogId = req.blog?.id || req.user?.blogId || req.body.blogId;
+
     // WORKAROUND: Si no hay blogId en el token, buscar el blog del usuario
     if (!blogId && req.user?.id) {
-      console.log('blogId no encontrado en token, buscando en DB...');
       try {
         const userWithBlog = await prisma.admin.findUnique({
           where: { id: req.user.id },
           include: { blogs: true }
         });
-        
         if (userWithBlog?.blogs?.[0]) {
           blogId = userWithBlog.blogs[0].id;
-          console.log('blogId encontrado en DB:', blogId);
         }
       } catch (dbError) {
         console.error('Error buscando blog del usuario:', dbError);
       }
     }
-    
+
     if (!blogId) {
-      return res.status(400).json({ 
-        error: "Blog ID es requerido - usuario no tiene blog asociado",
-        debug: {
-          userBlogId: req.user?.blogId,
-          bodyBlogId: req.body.blogId,
-          userId: req.user?.id,
-          user: req.user
-        }
-      });
+      return res.status(400).json({ error: "Blog ID es requerido" });
     }
     
     console.log('blogId final a usar:', blogId);
@@ -95,164 +81,114 @@ const uploadImage = async (req, res) => {
     let uploadResult;
     let finalPath;
     let variants = {};
+    let storageKey = null;
+    let storageUrl = null;
 
-    // Intentar usar Cloudinary primero
-    console.log('Verificando configuración de Cloudinary...');
-    const isCloudinaryConfigured = cloudinaryService.isConfigured();
-    console.log('Cloudinary configurado:', isCloudinaryConfigured);
-    console.log('Variables de entorno:', {
-      CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME ? 'SET' : 'MISSING',
-      CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY ? 'SET' : 'MISSING',
-      CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET ? 'SET' : 'MISSING'
-    });
-    
-    if (isCloudinaryConfigured) {
+    const uniqueFilename = generateUniqueFilename(originalname);
+
+    // Procesar imagen con Sharp — 3 variantes
+    const originalBuffer = await sharp(buffer)
+      .resize(2000, 2000, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 90 })
+      .toBuffer();
+
+    const ogBuffer = await sharp(buffer)
+      .resize(1500, 786, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 85 })
+      .toBuffer();
+
+    const thumbBuffer = await sharp(buffer)
+      .resize(400, 210, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
+
+    // Intentar R2 primero
+    if (r2Service.isConfigured()) {
       try {
-        console.log('Subiendo a Cloudinary...');
-        
-        // Generar un public ID único
-        const uniqueId = generateUniqueFilename(originalname);
-        console.log('Public ID generado:', uniqueId);
-        
-        uploadResult = await cloudinaryService.uploadImage(buffer, {
-          folder: 'taita-blog',
-          publicId: uniqueId,
-          entityType,
-          entityId
-        });
+        console.log('Subiendo a Cloudflare R2...');
+        const keyOriginal = `${blogId}/original/${uniqueFilename}.webp`;
+        const keyOg = `${blogId}/og/${uniqueFilename}.webp`;
+        const keyThumb = `${blogId}/thumb/${uniqueFilename}.webp`;
 
-        finalPath = uploadResult.url;
-        variants = uploadResult.variants;
-        
-        console.log('Imagen subida a Cloudinary exitosamente:', {
-          publicId: uploadResult.publicId,
-          url: uploadResult.url,
-          format: uploadResult.format,
-          bytes: uploadResult.bytes
-        });
-        
-      } catch (cloudinaryError) {
-        console.error('Error al subir a Cloudinary:', {
-          message: cloudinaryError.message,
-          stack: cloudinaryError.stack,
-          name: cloudinaryError.name
-        });
+        const [urlOriginal, urlOg, urlThumb] = await Promise.all([
+          r2Service.uploadBuffer(originalBuffer, keyOriginal),
+          r2Service.uploadBuffer(ogBuffer, keyOg),
+          r2Service.uploadBuffer(thumbBuffer, keyThumb),
+        ]);
+
+        storageKey = keyOriginal;
+        storageUrl = urlOriginal;
+        finalPath = urlOriginal;
+        variants = { original: urlOriginal, og: urlOg, thumb: urlThumb };
+
+        uploadResult = { success: true, url: urlOriginal, storageKey, variants };
+        console.log('Imagen subida a R2:', { storageKey, storageUrl });
+      } catch (r2Error) {
+        console.error('Error al subir a R2:', r2Error.message);
         console.log('Fallando a almacenamiento local...');
-        // Fallar a almacenamiento local si Cloudinary falla
         uploadResult = null;
       }
     } else {
-      console.log('Cloudinary no configurado, usando almacenamiento local directamente...');
+      console.log('R2 no configurado, usando almacenamiento local...');
     }
 
-    // Fallback a almacenamiento local si Cloudinary no está configurado o falla
+    // Fallback a almacenamiento local
     if (!uploadResult) {
-      console.log('Usando almacenamiento local...');
-      
-      // Determinar la carpeta de destino
       const uploadsDir = path.resolve(process.cwd(), 'uploads');
       const entityDir = path.join(uploadsDir, entityType);
-      
-      // Crear directorio si no existe
       if (!fs.existsSync(entityDir)) {
         fs.mkdirSync(entityDir, { recursive: true });
       }
 
-      // Generar nombre único del archivo
-      const uniqueFilename = generateUniqueFilename(originalname);
-
-      // Procesar imagen con Sharp
-      const processedImage = await sharp(buffer)
-        .resize(2000, 2000, { 
-          fit: 'inside', 
-          withoutEnlargement: true 
-        })
-        .webp({ quality: 90 })
-        .toBuffer();
-
-      // Guardar imagen principal
       const mainPath = path.join(entityDir, `${uniqueFilename}.webp`);
-      await fs.promises.writeFile(mainPath, processedImage);
+      const ogPath = path.join(entityDir, `${uniqueFilename}_og.webp`);
+      const thumbPath = path.join(entityDir, `${uniqueFilename}_thumb.webp`);
 
-      // Crear variantes
-      const mediumBuffer = await sharp(buffer)
-        .resize(1500, 786, { fit: 'inside', withoutEnlargement: true })
-        .webp({ quality: 85 })
-        .toBuffer();
-      
-      const smallBuffer = await sharp(buffer)
-        .resize(750, 393, { fit: 'inside', withoutEnlargement: true })
-        .webp({ quality: 80 })
-        .toBuffer();
+      await Promise.all([
+        fs.promises.writeFile(mainPath, originalBuffer),
+        fs.promises.writeFile(ogPath, ogBuffer),
+        fs.promises.writeFile(thumbPath, thumbBuffer),
+      ]);
 
-      const mediumPath = path.join(entityDir, `${uniqueFilename}_medium.webp`);
-      const smallPath = path.join(entityDir, `${uniqueFilename}_small.webp`);
-
-      await fs.promises.writeFile(mediumPath, mediumBuffer);
-      await fs.promises.writeFile(smallPath, smallBuffer);
-
-      // Construir rutas relativas
       finalPath = `/${entityType}/${uniqueFilename}.webp`;
       variants = {
         original: finalPath,
-        medium: `/${entityType}/${uniqueFilename}_medium.webp`,
-        small: `/${entityType}/${uniqueFilename}_small.webp`
+        og: `/${entityType}/${uniqueFilename}_og.webp`,
+        thumb: `/${entityType}/${uniqueFilename}_thumb.webp`
       };
-
-      uploadResult = {
-        success: true,
-        url: finalPath,
-        publicId: null, // No hay public ID para almacenamiento local
-        cloudinaryId: null,
-        variants,
-        local: true
-      };
+      uploadResult = { success: true, url: finalPath, variants, local: true };
     }
 
-    // Guardar información en la base de datos
-    console.log('Datos para crear media:', {
-      blogId: parseInt(blogId),
-      blogIdType: typeof blogId,
-      filename: path.basename(finalPath),
-      entityType,
-      cloudinaryId: uploadResult.cloudinaryId || null
-    });
-    
+    // Guardar en base de datos
     const mediaRecord = await prisma.media.create({
       data: {
         uuid: uuidv4(),
-        filename: path.basename(finalPath),
+        filename: `${uniqueFilename}.webp`,
         originalName: originalname,
-        mimeType: mimetype,
+        mimeType: 'image/webp',
         path: finalPath,
         size: buffer.length,
         entityType,
         entityId: entityId || null,
         blogId: parseInt(blogId),
         variants: JSON.stringify(variants),
-        // Campos específicos para Cloudinary
-        cloudinaryId: uploadResult.cloudinaryId || null,
-        cloudinaryUrl: uploadResult.url || null
+        storageKey,
+        storageUrl,
       }
     });
 
-    // Respuesta exitosa
     res.status(201).json({
       success: true,
-      message: uploadResult.cloudinaryId ? 
-        "Imagen subida exitosamente a Cloudinary" : 
-        "Imagen subida exitosamente al almacenamiento local",
+      message: storageKey ? "Imagen subida a R2" : "Imagen subida al almacenamiento local",
       media: {
         id: mediaRecord.id,
         uuid: mediaRecord.uuid,
-        url: finalPath,
+        url: storageUrl || finalPath,
         variants,
         filename: mediaRecord.filename,
         originalName: mediaRecord.originalName,
         mimeType: mediaRecord.mimeType,
         size: mediaRecord.size,
-        cloudinary: !!uploadResult.cloudinaryId,
-        cloudinaryId: uploadResult.cloudinaryId
       }
     });
 
@@ -313,7 +249,7 @@ const getMedia = async (req, res) => {
       variants: typeof item.variants === 'string' ? 
         JSON.parse(item.variants) : 
         item.variants || {},
-      url: item.cloudinaryUrl || item.path // Priorizar URL de Cloudinary
+      url: item.storageUrl || item.cloudinaryUrl || item.path
     }));
 
     const total = await prisma.media.count({ where });
@@ -385,19 +321,38 @@ const deleteMedia = async (req, res) => {
       return res.status(404).json({ error: "Medio no encontrado" });
     }
 
-    // Eliminar de Cloudinary si existe
-    if (media.cloudinaryId) {
+    // Eliminar de R2 si existe
+    if (media.storageKey) {
+      try {
+        // Eliminar las 3 variantes de R2
+        const baseKey = media.storageKey.replace('/original/', '/VARIANT/').replace('.webp', '.webp');
+        const variants = typeof media.variants === 'string' ? JSON.parse(media.variants) : media.variants || {};
+        const keysToDelete = [media.storageKey];
+        // Extraer keys de las URLs de variantes
+        const publicUrl = process.env.R2_PUBLIC_URL || '';
+        for (const url of Object.values(variants)) {
+          if (typeof url === 'string' && url.startsWith(publicUrl)) {
+            keysToDelete.push(url.replace(`${publicUrl}/`, ''));
+          }
+        }
+        await Promise.all(keysToDelete.map(key => r2Service.deleteObject(key).catch(e => console.error('Error deleting R2 key:', key, e.message))));
+        console.log('Imágenes eliminadas de R2:', keysToDelete);
+      } catch (r2Error) {
+        console.error('Error al eliminar de R2:', r2Error);
+      }
+    }
+    // Eliminar de Cloudinary si es legacy
+    else if (media.cloudinaryId) {
       try {
         await cloudinaryService.deleteImage(media.cloudinaryId);
         console.log('Imagen eliminada de Cloudinary:', media.cloudinaryId);
       } catch (cloudinaryError) {
         console.error('Error al eliminar de Cloudinary:', cloudinaryError);
-        // Continuar con la eliminación local aunque falle Cloudinary
       }
     }
 
     // Eliminar archivos locales si existen
-    if (media.path && !media.cloudinaryId) {
+    if (media.path && !media.cloudinaryId && !media.storageKey) {
       try {
         const uploadsDir = path.resolve(process.cwd(), 'uploads');
         const fullPath = path.join(uploadsDir, media.path);
@@ -487,7 +442,7 @@ const getMediaById = async (req, res) => {
       data: {
         ...media,
         variants,
-        url: media.cloudinaryUrl || media.path
+        url: media.storageUrl || media.cloudinaryUrl || media.path
       }
     });
 
@@ -499,8 +454,42 @@ const getMediaById = async (req, res) => {
   }
 };
 
+/**
+ * Upload image from a public URL (for API v1 / MCP)
+ */
+const uploadImageFromUrl = async (req, res) => {
+  try {
+    const { url, filename } = req.body;
+    if (!url) {
+      return res.status(400).json({ error: "URL is required" });
+    }
+
+    // Download image from URL
+    const response = await fetch(url);
+    if (!response.ok) {
+      return res.status(400).json({ error: `Failed to fetch image: ${response.status}` });
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.startsWith('image/')) {
+      return res.status(400).json({ error: "URL does not point to a valid image" });
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const originalname = filename || path.basename(new URL(url).pathname) || 'image.jpg';
+
+    // Inject into req so we can reuse uploadImage logic
+    req.file = { buffer, originalname, mimetype: contentType };
+    return uploadImage(req, res);
+  } catch (error) {
+    console.error('Error en uploadImageFromUrl:', error);
+    res.status(500).json({ error: "Error downloading or processing image" });
+  }
+};
+
 export {
   uploadImage,
+  uploadImageFromUrl,
   getMedia,
   deleteMedia,
   getMediaById

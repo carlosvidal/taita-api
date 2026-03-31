@@ -35,6 +35,7 @@ import tagsRouter from "./routes/tags.js";
 import userProfileRouter from "./routes/userProfile.js";
 import { addDebugRoutes } from "./controllers/commentsController.js";
 import v1PostsRouter from "./routes/v1/posts.js";
+import v1MediaRouter from "./routes/v1/media.js";
 import apiKeysRouter from "./routes/apiKeys.js";
 import subscribersPublicRouter from "./routes/subscribers-public.js";
 import subscribersRouter from "./routes/subscribers.js";
@@ -382,6 +383,7 @@ app.get("/health", (req, res) => {
 // External API v1 (authenticated via API key, not JWT)
 app.use("/api/v1/posts", v1PostsRouter);
 app.use("/api/v1", v1PostsRouter); // Also mounts /api/v1/blogs, /api/v1/categories, /api/v1/tags
+app.use("/api/v1/media", v1MediaRouter);
 
 // Endpoint interno de verificación de emails
 app.use("/api/emails", emailsRouter);
