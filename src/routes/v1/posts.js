@@ -234,6 +234,54 @@ router.get("/", authenticateApiKey("posts:read"), async (req, res) => {
 });
 
 /**
+ * GET /api/v1/categories
+ * List categories for the blog
+ */
+router.get("/categories", authenticateApiKey("posts:read"), async (req, res) => {
+  try {
+    if (!requireBlog(req, res)) return;
+    const categories = await prisma.category.findMany({
+      where: { blogId: req.blog.id },
+      select: { name: true, slug: true, _count: { select: { posts: true } } },
+    });
+
+    return res.json({
+      data: categories.map((c) => ({
+        name: c.name,
+        slug: c.slug,
+        posts_count: c._count.posts,
+      })),
+    });
+  } catch (error) {
+    return res.status(500).json({ error: "Internal error" });
+  }
+});
+
+/**
+ * GET /api/v1/tags
+ * List tags for the blog
+ */
+router.get("/tags", authenticateApiKey("posts:read"), async (req, res) => {
+  try {
+    if (!requireBlog(req, res)) return;
+    const tags = await prisma.tag.findMany({
+      where: { blogId: req.blog.id },
+      select: { name: true, slug: true, _count: { select: { postTags: true } } },
+    });
+
+    return res.json({
+      data: tags.map((t) => ({
+        name: t.name,
+        slug: t.slug,
+        posts_count: t._count.postTags,
+      })),
+    });
+  } catch (error) {
+    return res.status(500).json({ error: "Internal error" });
+  }
+});
+
+/**
  * GET /api/v1/posts/:slug
  * Get a single post by slug
  */
@@ -380,52 +428,6 @@ router.delete("/:slug", authenticateApiKey("posts:write"), async (req, res) => {
   } catch (error) {
     console.error("v1 delete post error:", error);
     return res.status(500).json({ error: "Internal error", message: "Failed to delete post" });
-  }
-});
-
-/**
- * GET /api/v1/categories
- * List categories for the blog
- */
-router.get("/categories", authenticateApiKey("posts:read"), async (req, res) => {
-  try {
-    const categories = await prisma.category.findMany({
-      where: { blogId: req.blog.id },
-      select: { name: true, slug: true, _count: { select: { posts: true } } },
-    });
-
-    return res.json({
-      data: categories.map((c) => ({
-        name: c.name,
-        slug: c.slug,
-        posts_count: c._count.posts,
-      })),
-    });
-  } catch (error) {
-    return res.status(500).json({ error: "Internal error" });
-  }
-});
-
-/**
- * GET /api/v1/tags
- * List tags for the blog
- */
-router.get("/tags", authenticateApiKey("posts:read"), async (req, res) => {
-  try {
-    const tags = await prisma.tag.findMany({
-      where: { blogId: req.blog.id },
-      select: { name: true, slug: true, _count: { select: { postTags: true } } },
-    });
-
-    return res.json({
-      data: tags.map((t) => ({
-        name: t.name,
-        slug: t.slug,
-        posts_count: t._count.postTags,
-      })),
-    });
-  } catch (error) {
-    return res.status(500).json({ error: "Internal error" });
   }
 });
 

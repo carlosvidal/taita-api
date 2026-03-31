@@ -176,12 +176,12 @@ const uploadImage = async (req, res) => {
 
       // Crear variantes
       const mediumBuffer = await sharp(buffer)
-        .resize(800, 600, { fit: 'inside', withoutEnlargement: true })
+        .resize(1500, 786, { fit: 'inside', withoutEnlargement: true })
         .webp({ quality: 85 })
         .toBuffer();
       
       const smallBuffer = await sharp(buffer)
-        .resize(400, 300, { fit: 'inside', withoutEnlargement: true })
+        .resize(750, 393, { fit: 'inside', withoutEnlargement: true })
         .webp({ quality: 80 })
         .toBuffer();
 
