@@ -85,8 +85,10 @@ const updateSettings = async (req, res) => {
     blogUuid,
   } = req.body;
 
-  if (template && !["default", "minimal", "professional"].includes(template)) {
-    return res.status(400).json({ error: "Plantilla no válida" });
+  const validThemes = ["editorial", "clean", "notion", "starter", "dawn", "edge", "headline", "magazine",
+    "default", "minimal", "professional"]; // legacy values kept for backward compat
+  if (template && !validThemes.includes(template)) {
+    return res.status(400).json({ error: "Tema no válido" });
   }
 
   try {
